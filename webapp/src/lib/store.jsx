@@ -7,6 +7,7 @@ export function StoreProvider({ children }) {
   const [lang, setLang] = useState('en')
   const [area, setArea] = useState(null)
   const [type, setType] = useState('all')
+  const [search, setSearch] = useState('')
   const yld = 0.065 // mid-point of the 5–8% yield band
 
   useEffect(() => {
@@ -17,7 +18,7 @@ export function StoreProvider({ children }) {
   }, [])
 
   return (
-    <Ctx.Provider value={{ data, lang, setLang, area, setArea, type, setType, yld }}>
+    <Ctx.Provider value={{ data, lang, setLang, area, setArea, type, setType, search, setSearch, yld }}>
       {children}
     </Ctx.Provider>
   )

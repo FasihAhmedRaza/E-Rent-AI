@@ -8,7 +8,7 @@ const SRC_NAME = { bayut: 'Bayut', dubizzle: 'Dubizzle', propertyfinder: 'Proper
 const EXT = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3h7v7" /><path d="M10 14 21 3" /><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" /></svg>
 
 export default function Listings() {
-  const { data, lang, area, type, setType, yld } = useStore()
+  const { data, lang, area, type, setType, search, yld } = useStore()
   const t = T[lang]
   const a = data.areas.find((x) => x.key === area)
   const [sortKey, setSortKey] = useState('rent')
@@ -17,8 +17,10 @@ export default function Listings() {
   const [pageSize, setPageSize] = useState(25)
 
   const rows = useMemo(() => {
+    const q = (search || '').trim().toLowerCase()
     const r = data.listings
-      .filter((l) => l.area === area && l.lt === 'sale' && (type === 'all' || l.type === type) && l.value && l.size)
+      .filter((l) => l.area === area && l.lt === 'sale' && (type === 'all' || l.type === type) && l.value && l.size
+        && (!q || (l.title || '').toLowerCase().includes(q)))
       .map((l) => ({ ...l, rent: l.value * yld }))
     r.sort((x, y) => {
       const xv = x[sortKey], yv = y[sortKey]
@@ -26,10 +28,10 @@ export default function Listings() {
       return ((xv || 0) - (yv || 0)) * sortDir
     })
     return r
-  }, [data, area, type, yld, sortKey, sortDir])
+  }, [data, area, type, yld, sortKey, sortDir, search])
 
   // reset to first page whenever the result set changes
-  useEffect(() => { setPage(1) }, [area, type, sortKey, sortDir, pageSize])
+  useEffect(() => { setPage(1) }, [area, type, sortKey, sortDir, pageSize, search])
 
   const total = rows.length
   const pages = Math.max(1, Math.ceil(total / pageSize))
