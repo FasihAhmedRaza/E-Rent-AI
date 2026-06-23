@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>E‑Rent AI — Account</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Tajawal:wght@500;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  :root{--pine:#0B4A45;--pine2:#083633;--pine-soft:#13615A;--teal:#2E8B81;--gold:#C2982F;--gold2:#A87D1E;--ink:#10201E;--muted:#6A7A76;--line:#E5EBE8;--card:#fff;--tint:#E9F1EE}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"IBM Plex Sans Arabic",system-ui,sans-serif;min-height:100vh;display:grid;place-items:center;background:linear-gradient(160deg,#0B4A45,#072F2C);color:var(--ink);padding:20px;position:relative;overflow:hidden}
+  body::before{content:"";position:absolute;inset:0;background:radial-gradient(600px 360px at 80% -10%,rgba(194,152,47,.22),transparent 60%),radial-gradient(520px 320px at 8% 120%,rgba(46,139,129,.4),transparent 60%)}
+  .card{position:relative;z-index:1;width:100%;max-width:420px;background:var(--card);border-radius:20px;box-shadow:0 30px 70px -30px rgba(0,0,0,.6);padding:30px}
+  .brand{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  .logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(150deg,#1A6A62,#083633);display:grid;place-items:center;border:1px solid rgba(194,152,47,.4)}
+  .logo svg{width:22px;height:22px}
+  .brand h1{font-family:"Tajawal";font-size:1.05rem;font-weight:800;color:var(--pine)}
+  .brand p{font-size:.72rem;color:var(--muted);font-weight:600}
+  h2{font-family:"Tajawal";font-weight:800;font-size:1.4rem;margin-bottom:6px}
+  .sub{font-size:.84rem;color:var(--muted);margin-bottom:8px;line-height:1.6}
+  label{display:block;font-size:.74rem;font-weight:700;color:var(--muted);margin:12px 0 6px}
+  .field{position:relative}
+  input{width:100%;font-size:.92rem;border:1px solid var(--line);border-radius:11px;padding:12px 44px 12px 14px;font-family:inherit;color:var(--ink)}
+  input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(46,139,129,.13)}
+  .eye{position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);width:30px;height:30px;display:grid;place-items:center;border:none;background:none;cursor:pointer;color:var(--muted)}
+  .eye svg{width:18px;height:18px}
+  .btn{width:100%;margin-top:16px;font-family:"Tajawal";font-weight:700;font-size:.95rem;color:#fff;background:linear-gradient(150deg,var(--pine-soft),var(--pine2));border:none;border-radius:11px;padding:13px;cursor:pointer}
+  .btn:hover{filter:brightness(1.08)}.btn:disabled{opacity:.6;cursor:default}
+  .msg{margin-top:14px;padding:11px 13px;border-radius:10px;font-size:.84rem;font-weight:600}
+  .msg.ok{background:var(--tint);border:1px solid #D3E3DD;color:var(--pine)}
+  .msg.err{background:#FBE9E8;border:1px solid #F1CFCC;color:#A92A24}
+  .center{text-align:center}
+  .icon-ok{width:64px;height:64px;border-radius:50%;background:var(--tint);display:grid;place-items:center;margin:6px auto 14px}
+  .icon-ok svg{width:32px;height:32px;color:var(--teal)}
+  a.applink{display:inline-block;margin-top:16px;color:var(--pine);font-weight:700;border:1px solid var(--line);border-radius:11px;padding:11px 20px}
+  a.applink:hover{background:var(--tint)}
+  .loading{text-align:center;color:var(--muted);padding:24px}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#F1E5C2" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V8l7-4 7 4v13M9 21v-5h6v5" /></svg></div>
+      <div><h1>E‑Rent AI</h1><p>Ajman Land Intelligence</p></div>
+    </div>
+    <div id="view"><div class="loading">Loading…</div></div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+    /* ===== CONFIG — keep URL + anon key; set APP_URL to your deployed app ===== */
+    const SUPABASE_URL = 'https://fnlkogqcqmoxlihqmfzb.supabase.co'
+    const SUPABASE_ANON_KEY = 'sb_publishable_dr9Gs99Es23NMmmTmadV_w_vK-lJ5Eg'
+    const APP_URL = 'http://localhost:5173'   // <-- change to your deployed E‑Rent AI app URL
+    /* ========================================================================= */
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { detectSessionInUrl: true, flowType: 'implicit' } })
+    const view = document.getElementById('view')
+    const qs = new URLSearchParams(location.search)
+    const hs = new URLSearchParams(location.hash.slice(1))
+    const type = qs.get('type') || hs.get('type')
+    const errDesc = qs.get('error_description') || hs.get('error_description')
+    const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>'
+
+    const ok = (h, s) => `<div class="center"><div class="icon-ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></div><h2>${h}</h2><p class="sub">${s}</p><a class="applink" href="${APP_URL}">Open E‑Rent AI →</a></div>`
+    const showError = (m) => { view.innerHTML = `<h2>Link problem</h2><p class="sub">${m}</p><a class="applink" href="${APP_URL}">Back to E‑Rent AI</a>` }
+    const showConfirmed = () => { view.innerHTML = ok('Email confirmed', 'Your account is verified — you can sign in now.') }
+
+    function showReset() {
+      view.innerHTML = `
+        <h2>Set a new password</h2>
+        <p class="sub">Choose a new password for your E‑Rent AI account.</p>
+        <label>New password</label>
+        <div class="field"><input id="p1" type="password" placeholder="New password" autocomplete="new-password"/><button class="eye" id="e1" type="button">${EYE}</button></div>
+        <label>Confirm password</label>
+        <div class="field"><input id="p2" type="password" placeholder="Repeat password" autocomplete="new-password"/><button class="eye" id="e2" type="button">${EYE}</button></div>
+        <div id="m"></div>
+        <button class="btn" id="save">Update password</button>`
+      const $ = (id) => document.getElementById(id)
+      const tog = (i, b) => { $(b).onclick = () => { $(i).type = $(i).type === 'password' ? 'text' : 'password' } }
+      tog('p1', 'e1'); tog('p2', 'e2')
+      $('save').onclick = async () => {
+        const a = $('p1').value, b = $('p2').value, m = $('m')
+        m.innerHTML = ''
+        if (a.length < 6) { m.innerHTML = '<div class="msg err">Password must be at least 6 characters.</div>'; return }
+        if (a !== b) { m.innerHTML = '<div class="msg err">Passwords do not match.</div>'; return }
+        $('save').disabled = true; $('save').textContent = 'Updating…'
+        const { error } = await supabase.auth.updateUser({ password: a })
+        $('save').disabled = false; $('save').textContent = 'Update password'
+        if (error) { m.innerHTML = `<div class="msg err">${error.message}</div>`; return }
+        view.innerHTML = ok('Password updated', 'Your password has been changed. You can sign in with it now.')
+      }
+    }
+
+    let handled = false
+    supabase.auth.onAuthStateChange((event) => {
+      if (handled) return
+      if (event === 'PASSWORD_RECOVERY') { handled = true; showReset() }
+    })
+    ;(async () => {
+      if (errDesc) { showError(decodeURIComponent(errDesc.replace(/\+/g, ' '))); return }
+      await new Promise((r) => setTimeout(r, 600)) // let detectSessionInUrl run
+      if (handled) return
+      const { data: { session } } = await supabase.auth.getSession()
+      if (type === 'recovery') { handled = true; showReset() }
+      else if (type) { handled = true; showConfirmed() }
+      else if (session) { handled = true; showReset() }
+      else showError('This link is invalid or has expired. Please request a new password‑reset email.')
+    })()
+  </script>
+</body>
+</html>

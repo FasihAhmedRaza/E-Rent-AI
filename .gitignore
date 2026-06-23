@@ -1,0 +1,23 @@
+# secrets
+.env
+
+# scraped data / dumps
+data/
+*.csv
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# playwright / patchright
+playwright-report/
+.cache/
+.pw-profile/
+
+# logs / os
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,24 @@
+<!-- Supabase → Authentication → Email Templates → "Confirm signup" → paste this into the Message body (Source/HTML). -->
+<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#10201E">
+  <div style="background:linear-gradient(150deg,#0B4A45,#083633);border-radius:16px;padding:22px 24px;text-align:center">
+    <div style="font-family:Tahoma,Arial;font-weight:800;font-size:20px;color:#ffffff">E‑Rent AI</div>
+    <div style="color:#C2982F;font-size:12px;font-weight:700;letter-spacing:1.5px;margin-top:2px">AJMAN LAND INTELLIGENCE</div>
+  </div>
+
+  <h2 style="font-size:20px;margin:24px 0 8px;color:#0B4A45">Confirm your email</h2>
+  <p style="color:#33433F;font-size:14px;line-height:1.7">
+    Welcome to <b>E‑Rent AI</b>. Please confirm <b>{{ .Email }}</b> to activate your account and sign in.
+  </p>
+
+  <p style="text-align:center;margin:26px 0">
+    <a href="{{ .ConfirmationURL }}" style="background:#C2982F;color:#0B3B37;font-weight:700;text-decoration:none;padding:13px 28px;border-radius:10px;display:inline-block;font-size:15px">Confirm email</a>
+  </p>
+
+  <p style="color:#6A7A76;font-size:12px;line-height:1.6">
+    If the button doesn't work, copy and paste this link:<br/>
+    <a href="{{ .ConfirmationURL }}" style="color:#0B4A45;word-break:break-all">{{ .ConfirmationURL }}</a>
+  </p>
+
+  <hr style="border:none;border-top:1px solid #E5EBE8;margin:18px 0" />
+  <p style="color:#97A4A0;font-size:11px;text-align:center">E‑Rent AI · Internal land intelligence platform · Ajman, UAE</p>
+</div>
