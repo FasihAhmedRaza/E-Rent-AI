@@ -10,17 +10,23 @@ const EXT = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWid
 export default function Listings() {
   const { data, lang, area, type, setType, search, yld } = useStore()
   const t = T[lang]
-  const a = data.areas.find((x) => x.key === area)
   const [sortKey, setSortKey] = useState('rent')
   const [sortDir, setSortDir] = useState(-1)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
 
+  const areaName = useMemo(
+    () => Object.fromEntries(data.areas.map((a) => [a.key, lang === 'ar' ? a.ar : a.en])),
+    [data, lang]
+  )
+  const q = (search || '').trim().toLowerCase()
+  const aname = areaName[area] || ''
+
   const rows = useMemo(() => {
-    const q = (search || '').trim().toLowerCase()
     const r = data.listings
-      .filter((l) => l.area === area && l.lt === 'sale' && (type === 'all' || l.type === type) && l.value && l.size
-        && (!q || (l.title || '').toLowerCase().includes(q)))
+      .filter((l) => l.lt === 'sale' && l.value && l.size && (type === 'all' || l.type === type)
+        // searching → match across ALL areas; otherwise scope to the selected area
+        && (q ? (l.title || '').toLowerCase().includes(q) : l.area === area))
       .map((l) => ({ ...l, rent: l.value * yld }))
     r.sort((x, y) => {
       const xv = x[sortKey], yv = y[sortKey]
@@ -28,10 +34,9 @@ export default function Listings() {
       return ((xv || 0) - (yv || 0)) * sortDir
     })
     return r
-  }, [data, area, type, yld, sortKey, sortDir, search])
+  }, [data, area, type, yld, sortKey, sortDir, q])
 
-  // reset to first page whenever the result set changes
-  useEffect(() => { setPage(1) }, [area, type, sortKey, sortDir, pageSize, search])
+  useEffect(() => { setPage(1) }, [area, type, sortKey, sortDir, pageSize, q])
 
   const total = rows.length
   const pages = Math.max(1, Math.ceil(total / pageSize))
@@ -41,7 +46,6 @@ export default function Listings() {
 
   const sort = (k) => { if (sortKey === k) setSortDir((d) => -d); else { setSortKey(k); setSortDir(-1) } }
   const arrow = (k) => (sortKey === k ? (sortDir < 0 ? ' ↓' : ' ↑') : '')
-  const aname = a ? (lang === 'ar' ? a.ar : a.en) : ''
   const open = (url) => url && window.open(url, '_blank', 'noopener,noreferrer')
 
   return (
@@ -53,10 +57,19 @@ export default function Listings() {
             <button key={k} className={'pill-f' + (type === k ? ' active' : '')} onClick={() => setType(k)}>{TYPES[k][lang]}</button>
           ))}
         </div>
-        <div className="tbl-act"><span className="basis-chip">{aname} · <b className="num">{total}</b> {t.forRent}</span></div>
+        <div className="tbl-act">
+          <span className="basis-chip">
+            {q ? <>“{search.trim()}” · <b className="num">{total}</b> {lang === 'ar' ? 'نتيجة' : 'results'}</>
+               : <>{aname} · <b className="num">{total}</b> {t.forRent}</>}
+          </span>
+        </div>
       </div>
 
-      <div className="list-hint">{EXT}<span>{lang === 'ar' ? 'اضغط على أي عرض لفتح الإعلان الأصلي على Bayut / Dubizzle / Property Finder' : 'Click any listing to open the original ad on Bayut / Dubizzle / Property Finder'}</span></div>
+      <div className="list-hint">{EXT}<span>
+        {q
+          ? (lang === 'ar' ? `بحث في كل عجمان عن "${search.trim()}" — اضغط أي عرض لفتح الإعلان الأصلي` : `Searching all of Ajman for “${search.trim()}” — click any listing to open the original ad`)
+          : (lang === 'ar' ? 'اضغط على أي عرض لفتح الإعلان الأصلي على Bayut / Dubizzle / Property Finder' : 'Click any listing to open the original ad on Bayut / Dubizzle / Property Finder')}
+      </span></div>
 
       <div className="card" style={{ overflow: 'hidden' }}>
         <div className="tbl-wrap">
@@ -64,6 +77,7 @@ export default function Listings() {
           <thead>
             <tr>
               <th onClick={() => sort('title')} className={sortKey === 'title' ? 'sorted' : ''}>{t.thProp}</th>
+              <th>{t.thSub}</th>
               <th onClick={() => sort('size')} className={'r' + (sortKey === 'size' ? ' sorted' : '')}>{t.thSize}{arrow('size')}</th>
               <th onClick={() => sort('value')} className={'r' + (sortKey === 'value' ? ' sorted' : '')}>{lang === 'ar' ? 'سعر البيع' : 'Sale price'}{arrow('value')}</th>
               <th onClick={() => sort('rent')} className={'r' + (sortKey === 'rent' ? ' sorted' : '')}>{t.thRent}{arrow('rent')}</th>
@@ -75,7 +89,8 @@ export default function Listings() {
           <tbody>
             {slice.map((l) => (
               <tr key={l.id} onClick={() => open(l.url)}>
-                <td className="pname"><span className="pn-title">{(l.title || '—').slice(0, 70)}</span><span className="ps">{TYPES[l.type]?.[lang] || t.forRent} · {aname}</span></td>
+                <td className="pname"><span className="pn-title">{(l.title || '—').slice(0, 64)}</span><span className="ps">{TYPES[l.type]?.[lang] || t.forRent}</span></td>
+                <td>{areaName[l.area] || <span className="muted">{l.area_raw || '—'}</span>}</td>
                 <td className="r num">{fmt(l.size)}</td>
                 <td className="r num">{t.cur} {money(l.value)}</td>
                 <td className="r rent">{t.cur} {money(l.rent)}</td>
@@ -84,7 +99,7 @@ export default function Listings() {
                 <td className="r"><span className="view-link">{lang === 'ar' ? 'فتح الإعلان' : 'View ad'} {EXT}</span></td>
               </tr>
             ))}
-            {total === 0 && <tr><td colSpan="7" className="empty">{t.noRes}</td></tr>}
+            {total === 0 && <tr><td colSpan="8" className="empty">{t.noRes}</td></tr>}
           </tbody>
         </table>
         </div>
