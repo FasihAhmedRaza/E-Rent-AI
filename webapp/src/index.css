@@ -565,3 +565,10 @@ tbody tr:hover .view-link{color:var(--pine);text-decoration:underline}
 .ac-cell b{font-family:"Tajawal";font-weight:800;font-size:.92rem;color:var(--ink)}
 .ac-act{margin-top:11px;font-size:.8rem;font-weight:700;color:var(--teal)}
 .ac-act:hover{color:var(--pine);text-decoration:underline}
+.ac-note{margin-top:10px;font-size:.74rem;color:var(--muted);font-weight:600;line-height:1.5}
+.ac-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.ac-lrow{display:grid;grid-template-columns:24px 1fr auto;align-items:center;gap:10px;width:100%;text-align:start;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:#fff;transition:.12s}
+.ac-lrow:hover{background:var(--tint);border-color:var(--teal)}
+.ac-lrank{font-family:"Tajawal";font-weight:900;color:var(--gold);text-align:center}
+.ac-lname{font-weight:700;font-size:.88rem;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ac-lrent{font-family:"Tajawal";font-weight:800;color:var(--pine);white-space:nowrap}

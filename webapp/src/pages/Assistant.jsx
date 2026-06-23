@@ -14,11 +14,22 @@ export default function Assistant() {
   const [listening, setListening] = useState(false)
   const convRef = useRef(null)
   const recog = useRef(null)
+  const nm = (a) => (lang === 'ar' ? a.ar : a.en)
 
   useEffect(() => { if (convRef.current) convRef.current.scrollTop = convRef.current.scrollHeight }, [msgs])
 
   const rankByRent = (typeKey) =>
     data.areas.map((a) => ({ a, rent: areaAvgRent(a, typeKey, yld) })).filter((x) => x.rent > 0).sort((x, y) => y.rent - x.rent)
+
+  const srcNote = (a) => {
+    const s = a.sources || {}
+    const parts = []
+    if (s.bayut) parts.push('Bayut ' + fmt(s.bayut))
+    if (s.dubizzle) parts.push('Dubizzle ' + fmt(s.dubizzle))
+    if (s.propertyfinder) parts.push('PF ' + fmt(s.propertyfinder))
+    const trend = (a.trend >= 0 ? '+' : '') + a.trend + '%'
+    return (lang === 'ar' ? `الاتجاه 6 أشهر ${trend} · سعر القدم: ` : `6‑mo trend ${trend} · AED/sqft: `) + parts.join(' · ')
+  }
 
   const areaCard = (a, typeKey, title) => {
     const s = statsFor(a, typeKey, yld) || statsFor(a, 'all', yld)
@@ -26,16 +37,63 @@ export default function Assistant() {
     const rank = ranked.findIndex((x) => x.a.key === a.key) + 1
     return {
       card: {
-        title, area: lang === 'ar' ? a.ar : a.en, rent: s.avg, areaKey: a.key,
+        title, area: nm(a), rent: s.avg, areaKey: a.key,
         cells: [
           { l: lang === 'ar' ? 'سعر القدم' : 'Price/sqft', v: fmt(s.ppsf) + ' ' + t.cur },
-          { l: lang === 'ar' ? 'النطاق' : 'Range', v: money(s.low) + '–' + money(s.high) },
+          { l: lang === 'ar' ? 'النطاق' : 'Rent range', v: money(s.low) + '–' + money(s.high) },
           { l: lang === 'ar' ? 'القطع' : 'Plots', v: fmt(s.n) },
           { l: lang === 'ar' ? 'الترتيب' : 'Rank', v: '#' + rank + ' / ' + ranked.length },
         ],
+        note: srcNote(a),
       },
     }
   }
+
+  const marketCard = (typeKey) => {
+    const ranked = rankByRent(typeKey)
+    if (!ranked.length) return { text: t.asstNoMatch }
+    const rents = ranked.map((x) => x.rent).slice().sort((x, y) => x - y)
+    const medRent = rents[Math.floor(rents.length / 2)]
+    const cheapest = ranked[ranked.length - 1].a
+    const priciest = ranked[0].a
+    return {
+      card: {
+        title: typeKey === 'all' ? (lang === 'ar' ? 'سوق أراضي عجمان' : 'Ajman land market') : TYPES[typeKey][lang] + (lang === 'ar' ? ' — السوق' : ' market'),
+        area: lang === 'ar' ? 'كل عجمان' : 'All of Ajman', rent: medRent, toOverview: true,
+        cells: [
+          { l: lang === 'ar' ? 'المناطق' : 'Areas', v: fmt(ranked.length) },
+          { l: lang === 'ar' ? 'إجمالي القطع' : 'Total plots', v: fmt(data.kpis.sale) },
+          { l: lang === 'ar' ? 'الأرخص' : 'Cheapest', v: nm(cheapest) },
+          { l: lang === 'ar' ? 'الأعلى' : 'Most expensive', v: nm(priciest) },
+        ],
+        note: (lang === 'ar' ? `متوسط سعر القدم ${fmt(data.kpis.median_ppsf)} د.إ · الإيجار = القيمة × عائد 5–8٪` : `Median ${fmt(data.kpis.median_ppsf)} AED/sqft · rent = value × 5–8% yield`),
+      },
+    }
+  }
+
+  const topCard = (typeKey) => {
+    const ranked = rankByRent(typeKey).slice(0, 5)
+    return {
+      card: {
+        title: (lang === 'ar' ? 'أعلى المناطق إيجاراً' : 'Top areas by rent') + (typeKey !== 'all' ? ' · ' + TYPES[typeKey][lang] : ''),
+        list: ranked.map((x) => ({ key: x.a.key, name: nm(x.a), rent: x.rent })),
+      },
+    }
+  }
+
+  const yieldCard = () => ({
+    card: {
+      title: lang === 'ar' ? 'كيف يُحسب الإيجار' : 'How rent is calculated',
+      cells: [
+        { l: lang === 'ar' ? 'نطاق العائد' : 'Yield band', v: '5–8%' },
+        { l: lang === 'ar' ? 'الافتراضي' : 'Default', v: '6.5%' },
+        { l: lang === 'ar' ? 'متوسط سعر القدم' : 'Median AED/sqft', v: fmt(data.kpis.median_ppsf) },
+        { l: lang === 'ar' ? 'المناطق' : 'Areas', v: fmt(data.areas.length) },
+      ],
+      note: lang === 'ar' ? 'إيجار الأرض السنوي = سعر بيع الأرض × العائد. أسعار البيع حقيقية من Bayut وDubizzle وProperty Finder.' : 'Annual land rent = land sale value × yield. Sale prices are real, from Bayut, Dubizzle & Property Finder.',
+      toOverview: true,
+    },
+  })
 
   function answer(text) {
     const s = text.toLowerCase()
@@ -47,29 +105,35 @@ export default function Assistant() {
       const base = a.en.toLowerCase().replace(/\s*\d+$/, '').replace(/^al\s+/, '').trim()
       return base.length >= 4 && s.includes(base)
     })
-    const ranked = rankByRent(typeKey)
-    if (!ranked.length) return { text: t.asstNoMatch }
-    if (/cheap|lowest|أرخص|أقل/.test(s)) return areaCard(ranked[ranked.length - 1].a, typeKey, (lang === 'ar' ? 'الأرخص · ' : 'Cheapest · ') + tname)
-    if (/expensive|highest|priciest|أعلى|أغلى|اغلى/.test(s)) return areaCard(ranked[0].a, typeKey, (lang === 'ar' ? 'الأعلى · ' : 'Most expensive · ') + tname)
-    if (/compare|vs|قارن/.test(s) && areaHit) {
+    if (/yield|عائد|how .*calculat|methodolog|كيف.*حسب/.test(s)) return yieldCard()
+    if (/compare|versus|\bvs\b|قارن/.test(s) && areaHit) {
+      const ranked = rankByRent(typeKey)
       const avg = Math.round(ranked.reduce((x, y) => x + y.rent, 0) / ranked.length)
       const r = areaAvgRent(areaHit, typeKey, yld)
       const diff = avg ? Math.round((r - avg) / avg * 100) : 0
       return {
         card: {
-          title: lang === 'ar' ? 'مقارنة بمتوسط عجمان' : 'vs Ajman average', area: lang === 'ar' ? areaHit.ar : areaHit.en, rent: r, areaKey: areaHit.key,
+          title: lang === 'ar' ? 'مقارنة بمتوسط عجمان' : 'vs Ajman average', area: nm(areaHit), rent: r, areaKey: areaHit.key,
           cells: [
             { l: lang === 'ar' ? 'متوسط عجمان' : 'Ajman avg', v: t.cur + ' ' + money(avg) },
             { l: lang === 'ar' ? 'الفرق' : 'Difference', v: (diff >= 0 ? '+' : '') + diff + '%' },
             { l: lang === 'ar' ? 'سعر القدم' : 'Price/sqft', v: fmt(areaHit.ppsf) + ' ' + t.cur },
             { l: lang === 'ar' ? 'القطع' : 'Plots', v: fmt(areaHit.n) },
           ],
+          note: srcNote(areaHit),
         },
       }
     }
-    if (areaHit) return areaCard(areaHit, typeKey, lang === 'ar' ? areaHit.ar : areaHit.en)
-    if (/top|rank|أعلى الإيجارات/.test(s)) return areaCard(ranked[0].a, typeKey, lang === 'ar' ? 'الأعلى إيجاراً' : 'Highest rents')
-    return { text: t.asstNoMatch }
+    const ranked = rankByRent(typeKey)
+    if (ranked.length) {
+      if (/(top|list|rank|which areas|all areas)/.test(s) && /(rent|expensive|high|price|أعلى|قائمة)/.test(s)) return topCard(typeKey)
+      if (/cheap|lowest|\blow\b|affordab|budget|أرخص|أقل|رخيص/.test(s)) return areaCard(ranked[ranked.length - 1].a, typeKey, (lang === 'ar' ? 'الأرخص · ' : 'Cheapest · ') + tname)
+      if (/expensive|highest|priciest|premium|best|top|أعلى|أغلى|اغلى/.test(s)) return areaCard(ranked[0].a, typeKey, (lang === 'ar' ? 'الأعلى · ' : 'Most expensive · ') + tname)
+    }
+    if (areaHit) return areaCard(areaHit, typeKey, nm(areaHit))
+    if (typeKey !== 'all') return marketCard(typeKey)
+    // fallback → always a useful card
+    return marketCard('all')
   }
 
   const speak = (txt) => {
@@ -83,7 +147,8 @@ export default function Assistant() {
     setInput('')
     const a = answer(q)
     setMsgs((m) => [...m, { role: 'user', text: q }, { role: 'bot', ...a }])
-    speak(a.card ? `${a.card.area}. ${t.cur} ${money(a.card.rent)} ${lang === 'ar' ? 'سنوياً' : 'per year'}` : a.text)
+    const c = a.card
+    speak(c ? (c.list ? c.title : `${c.area}. ${c.rent ? t.cur + ' ' + money(c.rent) + (lang === 'ar' ? ' سنوياً' : ' per year') : ''}`) : a.text)
   }
 
   const mic = () => {
@@ -104,10 +169,26 @@ export default function Assistant() {
   const Card = ({ c }) => (
     <div className="ans-card">
       <div className="ac-t">{c.title}</div>
-      <div className="ac-area">{c.area}</div>
-      <div className="ac-rent num">{t.cur} {money(c.rent)} <small>/{lang === 'ar' ? 'سنة' : 'yr'} · {lang === 'ar' ? 'متوسط' : 'avg'}</small></div>
-      <div className="ac-grid">{c.cells.map((x, i) => <div className="ac-cell" key={i}><span>{x.l}</span><b className="num">{x.v}</b></div>)}</div>
-      <button className="ac-act" onClick={() => goArea(c.areaKey)}>{lang === 'ar' ? 'عرض المنطقة' : 'View area'} →</button>
+      {c.list ? (
+        <div className="ac-list">
+          {c.list.map((r, i) => (
+            <button className="ac-lrow" key={r.key} onClick={() => goArea(r.key)}>
+              <span className="ac-lrank num">{i + 1}</span>
+              <span className="ac-lname">{r.name}</span>
+              <span className="ac-lrent num">{t.cur} {money(r.rent)}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <>
+          {c.area && <div className="ac-area">{c.area}</div>}
+          {c.rent != null && <div className="ac-rent num">{t.cur} {money(c.rent)} <small>/{lang === 'ar' ? 'سنة' : 'yr'} · {lang === 'ar' ? 'متوسط' : 'avg'}</small></div>}
+          {c.cells && <div className="ac-grid">{c.cells.map((x, i) => <div className="ac-cell" key={i}><span>{x.l}</span><b className="num">{x.v}</b></div>)}</div>}
+        </>
+      )}
+      {c.note && <div className="ac-note">{c.note}</div>}
+      {c.areaKey ? <button className="ac-act" onClick={() => goArea(c.areaKey)}>{lang === 'ar' ? 'عرض المنطقة' : 'View area'} →</button>
+        : c.toOverview ? <button className="ac-act" onClick={() => nav('/')}>{lang === 'ar' ? 'فتح اللوحة' : 'Open dashboard'} →</button> : null}
     </div>
   )
 
