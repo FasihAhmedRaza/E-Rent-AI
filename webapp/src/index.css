@@ -551,3 +551,17 @@ tbody tr:hover .view-link{color:var(--pine);text-decoration:underline}
 .sp-all{display:block;width:100%;text-align:center;padding:11px;margin-top:4px;border-top:1px solid var(--line2);color:var(--pine);font-weight:700;font-size:.82rem}
 .sp-all:hover{background:var(--tint)}
 .sp-empty{padding:18px;text-align:center;color:var(--faint);font-size:.85rem}
+
+/* AI assistant answer cards */
+.msg.is-card{background:none;border:none;padding:0;max-width:90%}
+.ans-card{background:linear-gradient(160deg,#F4F8F6,#EAF2EF);border:1px solid #D3E3DD;border-radius:14px;padding:14px 16px}
+.ac-t{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gold2)}
+.ac-area{font-family:"Tajawal";font-weight:800;font-size:1.15rem;color:var(--pine);margin:2px 0 4px}
+.ac-rent{font-family:"Tajawal";font-weight:900;font-size:1.45rem;color:var(--ink);line-height:1.1}
+.ac-rent small{font-size:.76rem;color:var(--muted);font-weight:700}
+.ac-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
+.ac-cell{background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 11px}
+.ac-cell span{display:block;font-size:.68rem;color:var(--muted);font-weight:600;margin-bottom:2px}
+.ac-cell b{font-family:"Tajawal";font-weight:800;font-size:.92rem;color:var(--ink)}
+.ac-act{margin-top:11px;font-size:.8rem;font-weight:700;color:var(--teal)}
+.ac-act:hover{color:var(--pine);text-decoration:underline}
