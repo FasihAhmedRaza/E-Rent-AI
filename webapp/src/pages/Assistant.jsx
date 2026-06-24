@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore, statsFor, areaAvgRent } from '../lib/store'
 import { T, TYPES } from '../lib/i18n'
 import { fmt, money } from '../lib/format'
+import { askGemini } from '../lib/ai'
 
 export default function Assistant() {
   const { data, lang, yld, setArea, setType } = useStore()
@@ -141,14 +142,29 @@ export default function Assistant() {
     try { const u = new SpeechSynthesisUtterance(txt); u.lang = lang === 'ar' ? 'ar-AE' : 'en-US'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u) } catch (e) { /* ignore */ }
   }
 
-  const send = (text) => {
+  const buildContext = () => data.areas.map((a) => {
+    const s = statsFor(a, 'all', yld)
+    return `${a.en} | rent ${Math.round(s.avg)} AED/yr | ${a.ppsf} AED/sqft | ${a.n} plots | trend ${a.trend >= 0 ? '+' : ''}${a.trend}%`
+  }).join('\n')
+
+  const send = async (text) => {
     const q = (text ?? input).trim()
     if (!q) return
     setInput('')
-    const a = answer(q)
-    setMsgs((m) => [...m, { role: 'user', text: q }, { role: 'bot', ...a }])
-    const c = a.card
-    speak(c ? (c.list ? c.title : `${c.area}. ${c.rent ? t.cur + ' ' + money(c.rent) + (lang === 'ar' ? ' سنوياً' : ' per year') : ''}`) : a.text)
+    setMsgs((m) => [...m, { role: 'user', text: q }, { role: 'bot', text: t.asstThinking, pending: true }])
+    let final
+    try {
+      const ans = await askGemini({ question: q, context: buildContext(), lang }) // real Gemini AI
+      final = { role: 'bot', text: ans }
+    } catch {
+      final = { role: 'bot', ...answer(q) } // no key / offline → instant data cards
+    }
+    setMsgs((m) => {
+      const c = [...m]
+      for (let i = c.length - 1; i >= 0; i--) if (c[i].pending) { c[i] = final; return c }
+      c.push(final); return c
+    })
+    speak(final.text || final.card?.area || '')
   }
 
   const mic = () => {
