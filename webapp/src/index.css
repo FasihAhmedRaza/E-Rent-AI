@@ -702,8 +702,28 @@ tbody tr:hover .view-link{color:var(--pine);text-decoration:underline}
 .asst-page .msg{max-width:min(88%,900px)}
 .asst-page .msg.is-card{max-width:min(96%,1100px)}
 .asst-page .conv{padding:22px 26px}
+@media (max-width:860px){
+  /* the assistant is full-bleed; reserve space so its input clears the fixed bottom nav */
+  .content.flush{padding-bottom:74px;box-sizing:border-box}
+  /* chat button + popup sit above the bottom nav, not under it */
+  .chat-fab{inset-inline-end:16px;bottom:80px;width:54px;height:54px}
+  .chat-pop{inset-block:60px 78px;inset-inline:8px;width:auto;height:auto;max-height:none}
+}
 @media (max-width:560px){
-  .chat-pop{inset-inline:10px;width:auto;bottom:84px;height:calc(100vh - 120px)}
-  .chat-fab{inset-inline-end:16px;bottom:16px;width:54px;height:54px}
-  .asst-page{height:calc(100vh - 120px)}
+  /* compact assistant header (single row, no wrap chaos) */
+  .asst-head{flex-wrap:nowrap;gap:9px;padding:13px 14px}
+  .asst-id{flex:1;min-width:0}
+  .asst-id h3{font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .asst-head p,.asst-head .asst-status{display:none}
+  .icon-btn{width:34px;height:34px}
+  /* suggestion chips on one scrollable line so the chat keeps its height */
+  .composer .suggs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:6px}
+  .composer .suggs::-webkit-scrollbar{display:none}
+  .composer .sugg{flex:0 0 auto;white-space:nowrap}
+  /* listing carousel: swipe (no width-eating arrows), readable cards */
+  .asst-page .ac-arrow{display:none}
+  .asst-page .lc{flex-basis:200px}
+  .asst-page .conv{padding:16px 14px}
+  .asst-page .msg{max-width:94%}
+  .asst-page .msg.is-card{max-width:100%}
 }
