@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useStore, statsFor, areaAvgRent } from '../lib/store'
-import { T, TYPES } from '../lib/i18n'
+import { T, TYPES, TYPES_COMMERCIAL } from '../lib/i18n'
 import { fmt } from '../lib/format'
 
 // deterministic pseudo-noise (mirrors the prototype's seeded())
@@ -19,23 +19,25 @@ const lerp = (t) => {
 }
 
 export default function Trends() {
-  const { data, lang, area, type, setArea, yld } = useStore()
+  const { areas, listings, lang, area, type, setArea, yld, isCommercial } = useStore()
   const t = T[lang]
   const rtl = lang === 'ar'
   const nm = (x) => (rtl ? x.ar : x.en)
-  const typeName = type === 'all' ? t.allTypes : TYPES[type][lang]
+  const typeMap = isCommercial ? TYPES_COMMERCIAL : TYPES
+  const typeName = type === 'all' ? t.allTypes : (typeMap[type]?.[lang] || t.allTypes)
 
-  const a = data.areas.find((x) => x.key === area) || data.areas[0]
+  const a = areas.find((x) => x.key === area) || areas[0] || { key: '', trend: 0, en: '', ar: '' }
   const s = statsFor(a, type, yld) || statsFor(a, 'all', yld)
 
-  // --- listings for selected area+type (rent = value × yld); fall back to all types ---
+  // --- listings for selected area+type; land uses SALE×yld, commercial uses real RENT ---
   const rents = useMemo(() => {
-    const of = (ty) => data.listings
-      .filter((l) => l.area === a.key && (ty === 'all' || l.type === ty) && l.value > 0)
+    const lt = isCommercial ? 'rent' : 'sale'
+    const of = (ty) => listings
+      .filter((l) => l.area === a.key && l.lt === lt && (ty === 'all' || l.type === ty) && l.value > 0)
       .map((l) => l.value * yld)
     const sel = type === 'all' ? of('all') : of(type)
     return sel.length ? sel : of('all')
-  }, [data.listings, a.key, type, yld])
+  }, [listings, a.key, type, yld, isCommercial])
 
   // ---- Chart 1: simulated 6-month rent trend, ending at the current avg ----
   const line = useMemo(() => {
@@ -94,7 +96,7 @@ export default function Trends() {
 
   // ---- Chart 3: avg rent by area for the selected type (real), top 12 ----
   const cmp = useMemo(() => {
-    const rows = data.areas
+    const rows = areas
       .map((x) => ({ k: x.key, name: nm(x), v: areaAvgRent(x, type, yld) }))
       .filter((r) => r.v > 0)
       .sort((r1, r2) => r2.v - r1.v)
@@ -106,7 +108,7 @@ export default function Trends() {
     const max = Math.max(...top.map((r) => r.v)) || 1
     const min = Math.min(...top.map((r) => r.v))
     return { top, max, min }
-  }, [data.areas, type, yld, a.key, lang])
+  }, [areas, type, yld, a.key, lang])
 
   return (
     <>

@@ -1,28 +1,31 @@
 import { useStore, statsFor, areaAvgRent } from '../lib/store'
-import { T, TYPES } from '../lib/i18n'
+import { T, TYPES, TYPES_COMMERCIAL } from '../lib/i18n'
 import { fmt, money } from '../lib/format'
 
 export default function Overview() {
-  const { data, lang, area, type, setArea, yld } = useStore()
+  const { areas, lang, area, type, setArea, yld, isCommercial } = useStore()
   const t = T[lang]
-  const a = data.areas.find((x) => x.key === area) || data.areas[0]
+  const a = areas.find((x) => x.key === area) || areas[0]
   const s = statsFor(a, type, yld)
   if (!s) return null
   const nm = (x) => (lang === 'ar' ? x.ar : x.en)
-  const typeName = type === 'all' ? t.allTypes : TYPES[type][lang]
+  const typeMap = isCommercial ? TYPES_COMMERCIAL : TYPES
+  const typeName = type === 'all' ? t.allTypes : (typeMap[type]?.[lang] || t.allTypes)
+  const basisNote = isCommercial ? t.marketRentNote : t.officialData
+  const unitWord = isCommercial ? t.unitsWord : (lang === 'ar' ? 'قطعة' : 'plots')
   const pos = s.high > s.low ? ((s.avg - s.low) / (s.high - s.low)) * 100 : 50
 
-  const ranked = [...data.areas].map((x) => ({ x, rent: areaAvgRent(x, type, yld) }))
+  const ranked = [...areas].map((x) => ({ x, rent: areaAvgRent(x, type, yld) }))
     .filter((r) => r.rent > 0).sort((r1, r2) => r2.rent - r1.rent)
   const maxRent = ranked[0]?.rent || 1
-  const cheapest = ranked[ranked.length - 1]
+  const cheapest = ranked[ranked.length - 1] || ranked[0]
   const priciest = ranked[0]
 
   const kpis = [
     { l: t.kLow, v: money(s.low), f: t.kLowF, cur: t.cur },
-    { l: t.kAvg, v: money(s.avg), f: `${fmt(s.ppsf)} ${t.cur}/${t.sqft} · ${t.kAvgF}`, gold: true, cur: t.cur },
+    { l: isCommercial ? t.kAvgC : t.kAvg, v: money(s.avg), f: `${fmt(s.ppsf)} ${t.cur}/${t.sqft} · ${isCommercial ? t.kAvgFC : t.kAvgF}`, gold: true, cur: t.cur },
     { l: t.kHigh, v: money(s.high), f: t.kHighF, cur: t.cur },
-    { l: t.kTrend, trend: s.trend, f: t.officialData.split('·')[0] },
+    { l: t.kTrend, trend: s.trend, f: basisNote.split('·')[0] },
   ]
 
   return (
@@ -30,13 +33,13 @@ export default function Overview() {
       <div className="card hero">
         <div className="hero-top">
           <div>
-            <div className="eyebrow">{t.rangeEyebrow}</div>
+            <div className="eyebrow">{isCommercial ? t.rangeEyebrowC : t.rangeEyebrow}</div>
             <h2>{t.areaPrefix}{nm(a)}{t.heroMid}{typeName}</h2>
           </div>
           <div className="hero-rt">
             <span className="basis">{t.basisA}<b className="num">{fmt(s.n)}</b>{t.basisB}</span>
             <div className="hero-tags">
-              <span className="hero-chip">{lang === 'ar' ? 'العائد' : 'Yield'} <b>5–8%</b></span>
+              {!isCommercial && <span className="hero-chip">{lang === 'ar' ? 'العائد' : 'Yield'} <b>5–8%</b></span>}
               <span className="hero-chip">{fmt(s.ppsf)} <b>{t.cur}/{t.sqft}</b></span>
             </div>
           </div>
@@ -69,8 +72,8 @@ export default function Overview() {
 
       <div className="grid g-main" style={{ marginTop: 16 }}>
         <div className="card chart-card" style={{ padding: 20 }}>
-          <div className="sec-h"><svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18" /><rect x="7" y="11" width="3" height="6" /><rect x="12" y="7" width="3" height="10" /><rect x="17" y="13" width="3" height="4" /></svg>{t.chartTitle}</div>
-          <p className="sec-s">{t.chartSub}</p>
+          <div className="sec-h"><svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18" /><rect x="7" y="11" width="3" height="6" /><rect x="12" y="7" width="3" height="10" /><rect x="17" y="13" width="3" height="4" /></svg>{isCommercial ? t.chartTitleC : t.chartTitle}</div>
+          <p className="sec-s">{isCommercial ? t.chartSubC : t.chartSub}</p>
           <div className="bars">
             {ranked.slice(0, 12).map((r, i) => (
               <div className={'bar-row' + (r.x.key === a.key ? ' active' : '')} key={r.x.key} onClick={() => setArea(r.x.key)}>
@@ -87,12 +90,12 @@ export default function Overview() {
           <div className="sec-h"><span className="lhs"><span className="spark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9z" /></svg></span>{t.aiTitle}</span></div>
           <p className="sec-s">{t.aiSub}</p>
           <p className="ai-body">
-            {nm(a)} {lang === 'ar' ? 'متوسط إيجارها' : 'averages'} <b className="num">{t.cur} {money(s.avg)}</b>/{lang === 'ar' ? 'سنة' : 'yr'} {lang === 'ar' ? 'عبر' : 'across'} <b className="num">{fmt(s.n)}</b> {lang === 'ar' ? 'قطعة' : 'plots'} ({fmt(s.ppsf)} {t.cur}/{t.sqft}).
+            {nm(a)} {lang === 'ar' ? 'متوسط إيجارها' : 'averages'} <b className="num">{t.cur} {money(s.avg)}</b>/{lang === 'ar' ? 'سنة' : 'yr'} {lang === 'ar' ? 'عبر' : 'across'} <b className="num">{fmt(s.n)}</b> {unitWord} ({fmt(s.ppsf)} {t.cur}/{t.sqft}).
           </p>
           <ul className="ai-list">
             <li><span className="tk" />{t.bestValueA}<b>{nm(cheapest.x)}</b> — {t.cur} {money(cheapest.rent)}{t.bestValueB}</li>
             <li><span className="tk" />{t.demandNear}<b>{nm(priciest.x)}</b> ({fmt(priciest.x.ppsf)} {t.cur}/{t.sqft})</li>
-            <li><span className="tk" />{t.officialData}</li>
+            <li><span className="tk" />{basisNote}</li>
           </ul>
         </div>
       </div>

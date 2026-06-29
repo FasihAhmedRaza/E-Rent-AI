@@ -47,12 +47,15 @@ SUBTYPE_MAP = {
     "mixed-use-land": ("land", "mixed_use_land"),
 }
 
-# (url path, our listing_type) — LAND only. Scope = land plots only (2026-06-22).
-# Sale land lives in Dubizzle's main /property-for-sale/land/ tree; land-for-rent is a
-# commercial subtype (commercial-plot). Verified: the /commercial/<x>-land/ sale slugs are empty.
+# (url path, our listing_type) — land + ALL commercial units.
+# The /commercial/ parent pages list every commercial subtype (offices, shops,
+# warehouses, showrooms, buildings, villas, floors, factories, bulk units, labour
+# accommodation) AND commercial/industrial plots; per-hit categories.slug maps each
+# via _category(). Residential land sale lives in the main /property-for-sale/land/ tree.
 SEARCHES = [
     ("/en/property-for-sale/land/", "sale"),
-    ("/en/property-for-rent/commercial/commercial-plot/", "rent"),
+    ("/en/property-for-rent/commercial/", "rent"),
+    ("/en/property-for-sale/commercial/", "sale"),
 ]
 
 _LISTINGS_ACTION = "fetchListingDataForQuery/fulfilled"
@@ -104,7 +107,7 @@ def _category(slugs) -> tuple:
     if "land" in (slugs or []):
         return ("land", "land")
     if "commercial" in (slugs or []):
-        return ("commercial_unit", None)
+        return ("commercial_unit", "other_commercial")
     return (None, None)
 
 
@@ -180,8 +183,7 @@ class DubizzleScraper(BaseScraper):
                 except Exception as exc:  # noqa: BLE001
                     log.exception("slice %s failed: %s", path, exc)
                     continue
-                rows.extend(r for r in (normalize_listing(x, self.source) for x in raws)
-                            if r.get("category") == "land")
+                rows.extend(normalize_listing(x, self.source) for x in raws)
 
         uniq = {r["source_url"]: r for r in rows if r.get("source_url")}
         rows = list(uniq.values())

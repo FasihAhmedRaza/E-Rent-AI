@@ -6,8 +6,10 @@ AWS WAF). Its listings are server-rendered into `__NEXT_DATA__` at
 a `.property` object. We navigate each Ajman land search URL, parse the blob out of
 the page HTML, and paginate via `?page=N`.
 
-Scope = land plots only (the /commercial-buy|commercial-rent/.../land-for-*.html
-trees are commercial land). PF gives `size` with an explicit unit, and price/offering
+Scope = Ajman land + commercial units (offices, shops, warehouses, showrooms, etc.)
+for rent + sale, all under the /commercial-buy|commercial-rent/ trees. Category/subtype
+is fixed per search URL (land searches auto-detect commercial/industrial/residential
+land from offering_type). PF gives `size` with an explicit unit, and price/offering
 type as structured objects, so mapping is direct.
 """
 from __future__ import annotations
@@ -25,10 +27,24 @@ log = logging.getLogger("scraper.propertyfinder")
 
 BASE = "https://www.propertyfinder.ae"
 
-# (url path, our listing_type) — Ajman LAND only
+# (url path, listing_type, category, subtype) — Ajman land + commercial units.
+# subtype=None on land searches → auto-detected from offering_type (commercial/
+# industrial/residential land). Unit slugs that 404 / return 0 are skipped harmlessly.
 SEARCHES = [
-    ("/en/commercial-buy/ajman/land-for-sale.html", "sale"),
-    ("/en/commercial-rent/ajman/land-for-rent.html", "rent"),
+    ("/en/commercial-buy/ajman/land-for-sale.html", "sale", "land", None),
+    ("/en/commercial-rent/ajman/land-for-rent.html", "rent", "land", None),
+    ("/en/commercial-buy/ajman/offices-for-sale.html", "sale", "commercial_unit", "office"),
+    ("/en/commercial-rent/ajman/offices-for-rent.html", "rent", "commercial_unit", "office"),
+    ("/en/commercial-buy/ajman/shops-for-sale.html", "sale", "commercial_unit", "shop"),
+    ("/en/commercial-rent/ajman/shops-for-rent.html", "rent", "commercial_unit", "shop"),
+    ("/en/commercial-buy/ajman/warehouses-for-sale.html", "sale", "commercial_unit", "warehouse"),
+    ("/en/commercial-rent/ajman/warehouses-for-rent.html", "rent", "commercial_unit", "warehouse"),
+    ("/en/commercial-buy/ajman/showrooms-for-sale.html", "sale", "commercial_unit", "showroom"),
+    ("/en/commercial-rent/ajman/showrooms-for-rent.html", "rent", "commercial_unit", "showroom"),
+    ("/en/commercial-buy/ajman/staff-accommodation-for-sale.html", "sale", "commercial_unit", "labour_camp"),
+    ("/en/commercial-rent/ajman/staff-accommodation-for-rent.html", "rent", "commercial_unit", "labour_camp"),
+    ("/en/commercial-buy/ajman/factories-for-sale.html", "sale", "commercial_unit", "factory"),
+    ("/en/commercial-rent/ajman/factories-for-rent.html", "rent", "commercial_unit", "factory"),
 ]
 
 
@@ -65,7 +81,7 @@ def _subtype(offering: str) -> str:
 class PropertyFinderScraper(BaseScraper):
     source = "propertyfinder"
 
-    def _map(self, p: dict, listing_type: str) -> dict:
+    def _map(self, p: dict, listing_type: str, category: str, subtype: str | None) -> dict:
         price = p.get("price") or {}
         size = p.get("size") or {}
         size_val = size.get("value")
@@ -80,13 +96,13 @@ class PropertyFinderScraper(BaseScraper):
             "size": size_str,                       # parse_size handles the unit
             "area_raw": loc.get("full_name"),
             "listing_type": listing_type,
-            "category": "land",
-            "subtype": _subtype(p.get("offering_type")),
+            "category": category,
+            "subtype": subtype or _subtype(p.get("offering_type")),
             "listed_date": (p.get("listed_date") or "")[:10] or None,
             "external_id": p.get("id") or p.get("listing_id"),
         }
 
-    def _scrape_search(self, path: str, listing_type: str) -> list[dict]:
+    def _scrape_search(self, path: str, listing_type: str, category: str, subtype: str | None) -> list[dict]:
         page = self.new_page()
         all_props: dict = {}
         try:
@@ -112,15 +128,15 @@ class PropertyFinderScraper(BaseScraper):
                 page.close()
             except Exception:
                 pass
-        return [self._map(p, listing_type) for p in all_props.values()]
+        return [self._map(p, listing_type, category, subtype) for p in all_props.values()]
 
     def run(self, dry_run: bool = False) -> list[dict]:
         rows: list[dict] = []
         with self:
-            for path, listing_type in SEARCHES:
+            for path, listing_type, category, subtype in SEARCHES:
                 log.info("=== propertyfinder %s (%s) ===", path, listing_type)
                 try:
-                    raws = self._scrape_search(path, listing_type)
+                    raws = self._scrape_search(path, listing_type, category, subtype)
                 except Exception as exc:  # noqa: BLE001
                     log.exception("slice %s failed: %s", path, exc)
                     continue

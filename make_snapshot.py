@@ -4,8 +4,12 @@ Run this AFTER scraping to refresh the dashboard:
     python run_scrape.py        # scrape the 3 portals -> Supabase
     python make_snapshot.py     # Supabase -> webapp/public/landData.json
 
-It rebuilds webapp/public/landData.json (areas + per-type value stats + listings),
-reusing the geocoded coordinates in webapp/public/area_coords.json when present.
+Output: webapp/public/landData.json with TWO views:
+  - LAND   (top-level areas/listings/kpis): rent is derived in the FRONTEND as
+           sale value x yield (5-8%).
+  - COMMERCIAL ("commercial" key): offices/shops/warehouses/... — uses scraped
+           MARKET RENT directly (annualised), plus sale prices. NO yield.
+Reuses the geocoded coordinates in webapp/public/area_coords.json when present.
 """
 from __future__ import annotations
 
@@ -39,30 +43,62 @@ META = {
     "hamidiya2":[25.3790,55.5080,1,0],"zahia1":[25.3880,55.5100,5,0],"zahia2":[25.3910,55.5140,5,0],
     "masfout":[24.7950,56.0600,1,0],"manama":[25.3400,56.0000,1,0],
 }
+
+# land subtype -> UI land-type bucket
 TYPE_MAP = {"commercial_land":"commercial","industrial_land":"industrial",
             "mixed_use_land":"mixed","residential_land":"residential","land":"residential"}
+LAND_SUBTYPES = set(TYPE_MAP)
+
+# rent period -> annual multiplier (so all commercial rent is comparable annually)
+ANNUAL = {"year": 1, "month": 12, "week": 52, "day": 365, "total": 1}
+
+# commercial unit subtypes we surface (order = UI order); anything else -> other_commercial
+UNIT_SUBTYPES = ["office", "shop", "warehouse", "showroom", "commercial_building",
+                 "commercial_villa", "commercial_floor", "labour_camp", "factory",
+                 "bulk_unit", "coworking", "other_commercial"]
+
+SOURCES = ("bayut", "dubizzle", "propertyfinder")
 
 
 def med(l):
     return round(statistics.median(l)) if l else None
 
 
-def main():
-    sb = get_client()
+def vstats(items):
+    """Aggregate [{'value','ppsf'}] -> {n,ppsf,low,avg,high} or None."""
+    vals = sorted(x["value"] for x in items if x.get("value"))
+    ppsfs = [x["ppsf"] for x in items if x.get("ppsf")]
+    if not vals:
+        return None
+    return {"n": len(vals), "ppsf": med(ppsfs), "low": vals[0], "avg": med(vals), "high": vals[-1]}
+
+
+def fetch_rows(sb):
     rows = []
-    for off in range(0, 30000, 1000):
+    for off in range(0, 80000, 1000):
         ch = sb.table("listings").select(
-            "source,title,price,size_sqft,price_per_sqft,area_key,listing_type,subtype,source_url"
+            "source,title,price,size_sqft,price_per_sqft,area_key,listing_type,"
+            "category,subtype,price_period,source_url"
         ).range(off, off + 999).execute().data
         if not ch:
             break
         rows += ch
+    return rows
 
-    coords = {}
+
+def load_coords():
     cp = os.path.join(PUB, "area_coords.json")
-    if os.path.exists(cp):
-        coords = json.load(open(cp, encoding="utf-8"))
+    return json.load(open(cp, encoding="utf-8")) if os.path.exists(cp) else {}
 
+
+def category_of(r):
+    cat = r.get("category")
+    if cat in ("land", "commercial_unit"):
+        return cat
+    return "land" if r.get("subtype") in LAND_SUBTYPES else "commercial_unit"
+
+
+def build_land(rows, coords):
     listings = [{
         "id": i, "area": r.get("area_key"), "type": TYPE_MAP.get(r.get("subtype"), "residential"),
         "size": r.get("size_sqft"), "value": r.get("price"), "ppsf": r.get("price_per_sqft"),
@@ -91,21 +127,104 @@ def main():
             "ll": ll, "trend": m[2], "coast": bool(m[3]),
             "ppsf": med([x["ppsf"] for x in ls]), "n": len(ls),
             "vlow": vals[0], "vavg": med(vals), "vhigh": vals[-1], "bytype": bytype,
-            "sources": {s: med([x["ppsf"] for x in ls if x["src"] == s]) for s in ("bayut", "dubizzle", "propertyfinder")},
+            "sources": {s: med([x["ppsf"] for x in ls if x["src"] == s]) for s in SOURCES},
         })
     areas.sort(key=lambda a: -a["n"])
 
     allppsf = sorted(x["ppsf"] for x in sale)
     kpis = {
-        "total_listings": len(rows), "sale": len(sale), "areas": len(areas),
+        "total_listings": len(listings), "sale": len(sale), "areas": len(areas),
         "median_ppsf": med(allppsf), "p10": allppsf[len(allppsf)//10] if allppsf else None,
         "p90": allppsf[9*len(allppsf)//10] if allppsf else None,
-        "by_source": {s: sum(1 for r in rows if r["source"] == s) for s in ("bayut", "dubizzle", "propertyfinder")},
+        "by_source": {s: sum(1 for l in listings if l["src"] == s) for s in SOURCES},
     }
-    out = {"meta": {"yieldDefault": 0.065, "yieldMin": 0.05, "yieldMax": 0.08},
-           "kpis": kpis, "areas": areas, "listings": listings}
+    return listings, areas, kpis
+
+
+def _unit_bucket(subtype):
+    return subtype if subtype in UNIT_SUBTYPES else "other_commercial"
+
+
+def build_commercial(rows, coords):
+    # normalise each commercial row: annualise rent, compute a consistent ppsf
+    items = []
+    for i, r in enumerate(rows):
+        area, price, size = r.get("area_key"), r.get("price"), r.get("size_sqft")
+        lt = r.get("listing_type")
+        if not area or not price:
+            continue
+        sub = _unit_bucket(r.get("subtype"))
+        if lt == "rent":
+            annual = price * ANNUAL.get(r.get("price_period") or "year", 1)
+            value = round(annual)
+            ppsf = round(annual / size, 2) if size else r.get("price_per_sqft")
+        else:  # sale
+            value = price
+            ppsf = r.get("price_per_sqft") or (round(price / size, 2) if size else None)
+        items.append({"id": i, "area": area, "subtype": sub, "type": sub, "size": size,
+                      "value": value, "ppsf": ppsf, "src": r.get("source"), "lt": lt,
+                      "url": r.get("source_url"), "title": r.get("title")})
+
+    by_area = defaultdict(list)
+    for it in items:
+        by_area[it["area"]].append(it)
+
+    areas = []
+    for ak, ls in by_area.items():
+        m = META.get(ak, [25.4, 55.5, 0, 0])
+        ll = coords.get(ak) or [m[0], m[1]]
+        rent_items = [x for x in ls if x["lt"] == "rent" and x["value"] and x["ppsf"]]
+        sale_items = [x for x in ls if x["lt"] == "sale" and x["value"] and x["ppsf"]]
+        bytype = {}
+        for st in UNIT_SUBTYPES:
+            rb = vstats([x for x in rent_items if x["subtype"] == st])
+            sb_ = vstats([x for x in sale_items if x["subtype"] == st])
+            if rb or sb_:
+                bytype[st] = {"rent": rb, "sale": sb_}
+        rent, sale = vstats(rent_items), vstats(sale_items)
+        if not rent and not sale:
+            continue
+        areas.append({
+            "key": ak, "en": AREA_NAMES.get(ak, {}).get("en", ak), "ar": AREA_NAMES.get(ak, {}).get("ar", ""),
+            "ll": ll, "trend": m[2], "coast": bool(m[3]),
+            "rent": rent, "sale": sale, "bytype": bytype,
+            "sources": {s: med([x["ppsf"] for x in rent_items if x["src"] == s]) for s in SOURCES},
+        })
+    areas.sort(key=lambda a: -((a["rent"] or {}).get("n", 0) + (a["sale"] or {}).get("n", 0)))
+
+    rent_ppsf_all = sorted(x["ppsf"] for x in items if x["lt"] == "rent" and x["ppsf"])
+    kpis = {
+        "rent_listings": sum(1 for x in items if x["lt"] == "rent"),
+        "sale_listings": sum(1 for x in items if x["lt"] == "sale"),
+        "areas": len(areas),
+        "median_rent_ppsf": med(rent_ppsf_all),
+        "by_source": {s: sum(1 for x in items if x["src"] == s) for s in SOURCES},
+        "by_type": {st: sum(1 for x in items if x["subtype"] == st) for st in UNIT_SUBTYPES
+                    if sum(1 for x in items if x["subtype"] == st)},
+    }
+    return items, areas, kpis
+
+
+def main():
+    sb = get_client()
+    rows = fetch_rows(sb)
+    coords = load_coords()
+
+    land_rows = [r for r in rows if category_of(r) == "land"]
+    comm_rows = [r for r in rows if category_of(r) == "commercial_unit"]
+
+    l_list, l_areas, l_kpis = build_land(land_rows, coords)
+    c_list, c_areas, c_kpis = build_commercial(comm_rows, coords)
+
+    out = {
+        "meta": {"yieldDefault": 0.065, "yieldMin": 0.05, "yieldMax": 0.08},
+        "kpis": l_kpis, "areas": l_areas, "listings": l_list,
+        "commercial": {"kpis": c_kpis, "areas": c_areas, "listings": c_list},
+    }
     json.dump(out, open(os.path.join(PUB, "landData.json"), "w", encoding="utf-8"), ensure_ascii=False)
-    print(f"snapshot written: {len(listings)} listings, {len(areas)} areas, median ppsf {kpis['median_ppsf']}")
+    print(f"snapshot: LAND {len(l_list)} listings / {len(l_areas)} areas (med ppsf {l_kpis['median_ppsf']}); "
+          f"COMMERCIAL {len(c_list)} listings / {len(c_areas)} areas "
+          f"(rent {c_kpis['rent_listings']}, sale {c_kpis['sale_listings']}, med rent ppsf {c_kpis['median_rent_ppsf']})")
 
 
 if __name__ == "__main__":

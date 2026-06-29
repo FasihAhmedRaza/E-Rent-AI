@@ -39,6 +39,13 @@ CATEGORY_MAP = {
     "shops": ("commercial_unit", "shop"),
     "warehouses": ("commercial_unit", "warehouse"),
     "showrooms": ("commercial_unit", "showroom"),
+    "commercial-buildings": ("commercial_unit", "commercial_building"),
+    "commercial-villas": ("commercial_unit", "commercial_villa"),
+    "commercial-floors": ("commercial_unit", "commercial_floor"),
+    "labour-camps": ("commercial_unit", "labour_camp"),
+    "factories": ("commercial_unit", "factory"),
+    "bulk-units": ("commercial_unit", "bulk_unit"),
+    "other-commercial": ("commercial_unit", "other_commercial"),
 }
 
 # (url purpose segment, category slug, our listing_type)
@@ -50,15 +57,20 @@ SEARCHES = [
     ("for-sale", "industrial-land", "sale"),
 ]
 
-# COMMERCIAL UNITS — PARKED (scope is land plots only). Re-enable with
-# BayutScraper(); s.include_commercial = True.
+# COMMERCIAL UNITS — all Ajman commercial property types, rent + sale.
+# Enabled via include_commercial = True. Slugs that 404 / return 0 hits are skipped
+# harmlessly (recon prunes the ones Bayut doesn't list for Ajman).
 COMMERCIAL_SEARCHES = [
-    ("to-rent", "offices", "rent"),
-    ("for-sale", "offices", "sale"),
-    ("to-rent", "shops", "rent"),
-    ("for-sale", "shops", "sale"),
-    ("to-rent", "warehouses", "rent"),
-    ("for-sale", "warehouses", "sale"),
+    ("to-rent", "offices", "rent"),                ("for-sale", "offices", "sale"),
+    ("to-rent", "shops", "rent"),                  ("for-sale", "shops", "sale"),
+    ("to-rent", "warehouses", "rent"),             ("for-sale", "warehouses", "sale"),
+    ("to-rent", "showrooms", "rent"),              ("for-sale", "showrooms", "sale"),
+    ("to-rent", "commercial-buildings", "rent"),   ("for-sale", "commercial-buildings", "sale"),
+    ("to-rent", "commercial-villas", "rent"),      ("for-sale", "commercial-villas", "sale"),
+    ("to-rent", "commercial-floors", "rent"),      ("for-sale", "commercial-floors", "sale"),
+    ("to-rent", "labour-camps", "rent"),           ("for-sale", "labour-camps", "sale"),
+    ("to-rent", "factories", "rent"),              ("for-sale", "factories", "sale"),
+    ("to-rent", "bulk-units", "rent"),             ("for-sale", "bulk-units", "sale"),
 ]
 
 
@@ -129,7 +141,7 @@ def _area_raw(hit: dict) -> str:
 
 class BayutScraper(BaseScraper):
     source = "bayut"
-    include_commercial = False  # scope = land only; set True to also scrape commercial units
+    include_commercial = True  # scrape land plots + all commercial unit types
 
     @staticmethod
     def _hits(state) -> list:

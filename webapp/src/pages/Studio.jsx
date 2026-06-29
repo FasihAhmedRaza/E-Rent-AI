@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useStore, baseFor, statsFor } from '../lib/store'
-import { T, TYPES } from '../lib/i18n'
+import { T, TYPES, TYPES_COMMERCIAL } from '../lib/i18n'
 import { fmt } from '../lib/format'
 
 /* Studio-specific strings — self-contained fallback so the page works even
@@ -55,6 +55,11 @@ const SRC_CLASS = { bayut: 'bayut', dubizzle: 'dub', propertyfinder: 'pf' }
 const round500 = (n) => Math.round(n / 500) * 500
 
 export default function Studio() {
+  const { isCommercial } = useStore()
+  return isCommercial ? <CommercialStudio /> : <LandStudio />
+}
+
+function LandStudio() {
   const { data, lang, area, type, yld } = useStore()
   const t = useMemo(() => ({ ...(STUDIO_STRINGS[lang] || STUDIO_STRINGS.en), ...(T[lang] || {}) }), [lang])
 
@@ -420,4 +425,137 @@ function estNote(lang, o) {
     return `قيمة الأرض حوالي ${fmt(o.saleTotal)} درهم (${fmt(o.salePerSqft)} د.إ/قدم) بناءً على أسعار البيع. بتطبيق عائد 5–8٪ يُقدَّر الإيجار السنوي بين ${fmt(o.r5)} و${fmt(o.r8)} درهم.`
   }
   return `Land value ≈ ${fmt(o.saleTotal)} AED (${fmt(o.salePerSqft)} AED/sqft) from sale listings. Applying a 5–8% yield, the estimated annual rent is ${fmt(o.r5)}–${fmt(o.r8)} AED.`
+}
+
+// ===== Commercial units Studio: market-rent estimator + sale→rent ROI =====
+function CommercialStudio() {
+  const { areas, kpis, lang, area, type } = useStore()
+  const t = useMemo(() => ({ ...(STUDIO_STRINGS[lang] || STUDIO_STRINGS.en), ...(T[lang] || {}) }), [lang])
+  const unitTypes = Object.keys(TYPES_COMMERCIAL).filter((k) => (kpis.by_type || {})[k])
+  const tName = (k) => (TYPES_COMMERCIAL[k] ? TYPES_COMMERCIAL[k][lang] : k)
+  const defType = type && type !== 'all' && TYPES_COMMERCIAL[type] ? type : (unitTypes[0] || 'office')
+
+  const [estArea, setEstArea] = useState(area)
+  const [estType, setEstType] = useState(defType)
+  const [estSize, setEstSize] = useState('')
+  const [estOut, setEstOut] = useState(null)
+  const [roiArea, setRoiArea] = useState(area)
+  const [roiType, setRoiType] = useState(defType)
+  const [roiBudget, setRoiBudget] = useState('')
+  const [roiOut, setRoiOut] = useState(null)
+  useEffect(() => { if (area) { setEstArea((a) => a || area); setRoiArea((a) => a || area) } }, [area])
+
+  const areaObj = (k) => areas.find((a) => a.key === k) || null
+  const aName = (k) => { const a = areaObj(k); return a ? ((t.areaPrefix || '') + (lang === 'ar' ? a.ar : a.en)) : '—' }
+  const rentPpsf = (k, ty) => { const a = areaObj(k); if (!a) return 0; const b = baseFor(a, ty && ty !== 'all' ? ty : 'all'); return (b && b.ppsf) || a.ppsf || 0 }
+  const salePpsf = (k) => { const a = areaObj(k); return (a && a.saleStats && a.saleStats.ppsf) || 0 }
+
+  const estimate = () => {
+    const a = areaObj(estArea); const size = +estSize || 0
+    if (!a || size <= 0) { setEstOut({ hint: true }); return }
+    const pps = rentPpsf(estArea, estType)
+    const mid = round500(size * pps)
+    setEstOut({ mid, lo: round500(mid * 0.85), hi: round500(mid * 1.15), pps })
+  }
+  const calcRoi = () => {
+    const a = areaObj(roiArea); const budget = +roiBudget || 0
+    if (!a || budget <= 0) { setRoiOut({ hint: true }); return }
+    const sp = salePpsf(roiArea), rp = rentPpsf(roiArea, roiType)
+    if (!sp || !rp) { setRoiOut({ noSale: true }); return }
+    const sqft = Math.round(budget / sp)
+    const rent = round500(sqft * rp)
+    setRoiOut({ sqft, rent, roi: Math.round(rent / budget * 1000) / 10, payback: Math.round(budget / (rent || 1) * 10) / 10, five: rent * 5, sp, rp })
+  }
+
+  const snap = useMemo(() => {
+    const a = areaObj(estArea); if (!a) return null
+    const s = statsFor(a, estType !== 'all' ? estType : 'all', 1)
+    const rows = unitTypes.filter((k) => a.bytype && a.bytype[k]).map((k) => { const ss = statsFor(a, k, 1); return { k, avg: ss.avg, n: ss.n } })
+    return { name: aName(estArea), s, rows }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estArea, estType, areas, lang])
+
+  const areaOptions = areas.map((a) => <option key={a.key} value={a.key}>{lang === 'ar' ? a.ar : a.en}</option>)
+  const typeOptions = unitTypes.map((k) => <option key={k} value={k}>{tName(k)}</option>)
+  const perYr = lang === 'ar' ? 'د.إ/سنة' : 'AED/yr'
+
+  return (
+    <section className="view show" id="v-studio">
+      <div className="grid g-main">
+        <div className="card" style={{ padding: 22 }}>
+          <div className="sec-h">
+            <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 1v3M12 20v3M4 12H1M23 12h-3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /><circle cx="12" cy="12" r="4" /></svg>
+            <span>{lang === 'ar' ? 'مقدّر الإيجار التجاري' : 'Commercial rent estimator'}</span>
+          </div>
+          <p className="sec-s">{lang === 'ar' ? 'أدخل نوع الوحدة والمساحة لمعرفة الإيجار السوقي' : 'Enter unit type and size to get the market rent'}</p>
+          <div className="est-form">
+            <div className="field"><label>{t.areaLbl}</label><div className="sel"><select value={estArea || ''} onChange={(e) => setEstArea(e.target.value)}>{areaOptions}</select></div></div>
+            <div className="field"><label>{t.typeLblC}</label><div className="sel"><select value={estType} onChange={(e) => setEstType(e.target.value)}>{typeOptions}</select></div></div>
+            <div className="field"><label>{t.estSizeL}</label><input className="inp" type="number" placeholder="2000" value={estSize} onChange={(e) => setEstSize(e.target.value)} /></div>
+          </div>
+          <button className="btn" style={{ marginTop: 14, width: '100%', justifyContent: 'center' }} onClick={estimate}>{t.estBtn}</button>
+          <div id="estResult">
+            {estOut && estOut.hint && <div className="est-hint">{t.estHint}</div>}
+            {estOut && !estOut.hint && (
+              <div className="est-card">
+                <div className="est-l">{lang === 'ar' ? 'إيجار سوقي تقديري' : 'Estimated market rent'}</div>
+                <div className="est-v"><span className="num">{fmt(estOut.mid)}</span> <span className="cur">{perYr}</span></div>
+                <div className="est-range">{t.estRange}: <span className="num">{fmt(estOut.lo)} – {fmt(estOut.hi)}</span></div>
+                <div className="est-arra"><span>{lang === 'ar' ? 'الإيجار/قدم' : 'Rent/sqft'}:</span> <b className="num">{fmt(estOut.pps)} {t.cur}</b></div>
+                <div className="est-note">{t.marketRentNote}</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column' }}>
+          <div className="sec-h">
+            <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18" /><path d="M7 14l4-4 3 3 6-7" /></svg>
+            <span>{lang === 'ar' ? 'لقطة السوق' : 'Market snapshot'}</span>
+          </div>
+          <p className="sec-s">{snap ? snap.name : ''}</p>
+          {snap && snap.s && (
+            <div className="rep-preview">
+              <div className="rep-prev-row"><span>{t.kAvgC}</span><b className="num">{fmt(snap.s.avg)} {t.cur}</b></div>
+              <div className="rep-prev-row"><span>{t.miUnits}</span><b className="num">{fmt(snap.s.n)}</b></div>
+              {snap.rows.slice(0, 6).map((r) => (
+                <div className="rep-prev-row" key={r.k}><span>{tName(r.k)}</span><b className="num">{fmt(r.avg)} {t.cur} · {fmt(r.n)}</b></div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: 22, marginTop: 16 }}>
+        <div className="sec-h">
+          <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+          <span>{t.roiTitle}</span>
+        </div>
+        <p className="sec-s">{lang === 'ar' ? 'أدخل ميزانية الشراء لتقدير العائد من إيجار الوحدة' : 'Enter a purchase budget to estimate the rental yield'}</p>
+        <div className="roi-form">
+          <div className="field"><label>{t.roiBudget}</label><input className="inp" type="number" placeholder="3000000" value={roiBudget} onChange={(e) => setRoiBudget(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') calcRoi() }} /></div>
+          <div className="field"><label>{t.areaLbl}</label><div className="sel"><select value={roiArea || ''} onChange={(e) => setRoiArea(e.target.value)}>{areaOptions}</select></div></div>
+          <div className="field"><label>{t.typeLblC}</label><div className="sel"><select value={roiType} onChange={(e) => setRoiType(e.target.value)}>{typeOptions}</select></div></div>
+        </div>
+        <button className="btn" style={{ marginTop: 14, width: '100%', justifyContent: 'center' }} onClick={calcRoi}>{t.roiBtn}</button>
+        <div id="roiResult">
+          {roiOut && roiOut.hint && <div className="est-hint">{t.roiHint}</div>}
+          {roiOut && roiOut.noSale && <div className="est-hint">{lang === 'ar' ? 'لا توجد بيانات بيع كافية لهذه المنطقة لحساب العائد' : 'Not enough sale data in this area to compute ROI'}</div>}
+          {roiOut && !roiOut.hint && !roiOut.noSale && (
+            <div className="est-card">
+              <div className="roi-grid">
+                <div className="roi-cell"><span>{lang === 'ar' ? 'المساحة الممكنة' : 'Affordable area'}</span><b className="num">{fmt(roiOut.sqft)} <small>{t.sqft}</small></b></div>
+                <div className="roi-cell"><span>{t.roiRent}</span><b className="num">{fmt(roiOut.rent)} <small>{t.cur}</small></b></div>
+                <div className="roi-cell hot"><span>{t.roiRoi}</span><b className="num">{roiOut.roi}%</b></div>
+                <div className="roi-cell"><span>{t.roiPayback}</span><b className="num">{roiOut.payback} <small>{t.roiYears}</small></b></div>
+              </div>
+              <div className="est-range">{t.roi5yr}: <span className="num">{fmt(roiOut.five)} {t.cur}</span></div>
+              <div className="est-arra"><span>{lang === 'ar' ? 'سعر البيع/قدم' : 'Sale/sqft'}:</span> <b className="num">{fmt(roiOut.sp)} {t.cur}</b> · <span>{lang === 'ar' ? 'الإيجار/قدم' : 'Rent/sqft'}:</span> <b className="num">{fmt(roiOut.rp)} {t.cur}</b></div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="foot"><div className="sources">{t.sources} <b>{t.deptName}</b></div><span className="demo-tag">{t.demo}</span></div>
+    </section>
+  )
 }

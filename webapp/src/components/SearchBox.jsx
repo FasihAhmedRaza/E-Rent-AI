@@ -7,7 +7,7 @@ import { fmt, money } from '../lib/format'
 const EXT = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3h7v7" /><path d="M10 14 21 3" /><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" /></svg>
 
 export default function SearchBox() {
-  const { data, lang, search, setSearch, setArea, setType, yld } = useStore()
+  const { areas: src, listings: srcL, lang, search, setSearch, setArea, setType, yld, isCommercial } = useStore()
   const t = T[lang]
   const nav = useNavigate()
   const [open, setOpen] = useState(false)
@@ -21,14 +21,14 @@ export default function SearchBox() {
 
   const q = (search || '').trim().toLowerCase()
   const { areas, listings, total } = useMemo(() => {
-    if (!data || q.length < 2) return { areas: [], listings: [], total: 0 }
-    const areas = data.areas.filter((a) =>
+    if (!src.length || q.length < 2) return { areas: [], listings: [], total: 0 }
+    const areas = src.filter((a) =>
       (a.en || '').toLowerCase().includes(q) || (a.ar || '').includes(search.trim())).slice(0, 4)
-    const matches = data.listings.filter((l) => l.lt === 'sale' && l.value && (l.title || '').toLowerCase().includes(q))
+    const matches = srcL.filter((l) => (isCommercial || l.lt === 'sale') && l.value && (l.title || '').toLowerCase().includes(q))
     return { areas, listings: matches.slice(0, 6), total: matches.length }
-  }, [data, q, search])
+  }, [src, srcL, q, search, isCommercial])
 
-  const aname = (k) => { const a = data?.areas.find((x) => x.key === k); return a ? (lang === 'ar' ? a.ar : a.en) : k }
+  const aname = (k) => { const a = src.find((x) => x.key === k); return a ? (lang === 'ar' ? a.ar : a.en) : k }
   const pickArea = (a) => { setArea(a.key); setType('all'); setSearch(''); setOpen(false); nav('/listings') }
   const openAd = (l) => { if (l.url) window.open(l.url, '_blank', 'noopener,noreferrer') }
   const seeAll = () => { if (q.length >= 2) { setOpen(false); nav('/listings') } }
@@ -46,7 +46,7 @@ export default function SearchBox() {
           {areas.map((a) => (
             <button key={a.key} className="sp-item" onClick={() => pickArea(a)}>
               <span className="sp-main">{lang === 'ar' ? a.ar : a.en}</span>
-              <span className="sp-sub">{fmt(a.n)} {t.forRent}</span>
+              <span className="sp-sub">{fmt(a.n)} {isCommercial ? t.unitsWord : t.forRent}</span>
             </button>
           ))}
           {listings.length > 0 && <div className="sp-h">{lang === 'ar' ? 'العروض' : 'Listings'}</div>}

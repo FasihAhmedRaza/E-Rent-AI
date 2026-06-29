@@ -6,7 +6,7 @@ import { fmt, money } from '../lib/format'
 import { askGemini } from '../lib/ai'
 
 export default function Assistant() {
-  const { data, lang, yld, setArea, setType } = useStore()
+  const { data, areas, kpis, lang, yld, setArea, setType, isCommercial } = useStore()
   const t = T[lang]
   const nav = useNavigate()
   const [msgs, setMsgs] = useState([{ role: 'bot', text: t.asstWelcome }])
@@ -20,7 +20,7 @@ export default function Assistant() {
   useEffect(() => { if (convRef.current) convRef.current.scrollTop = convRef.current.scrollHeight }, [msgs])
 
   const rankByRent = (typeKey) =>
-    data.areas.map((a) => ({ a, rent: areaAvgRent(a, typeKey, yld) })).filter((x) => x.rent > 0).sort((x, y) => y.rent - x.rent)
+    areas.map((a) => ({ a, rent: areaAvgRent(a, typeKey, yld) })).filter((x) => x.rent > 0).sort((x, y) => y.rent - x.rent)
 
   const srcNote = (a) => {
     const s = a.sources || {}
@@ -42,7 +42,7 @@ export default function Assistant() {
         cells: [
           { l: lang === 'ar' ? 'سعر القدم' : 'Price/sqft', v: fmt(s.ppsf) + ' ' + t.cur },
           { l: lang === 'ar' ? 'النطاق' : 'Rent range', v: money(s.low) + '–' + money(s.high) },
-          { l: lang === 'ar' ? 'القطع' : 'Plots', v: fmt(s.n) },
+          { l: isCommercial ? t.unitsWord : (lang === 'ar' ? 'القطع' : 'Plots'), v: fmt(s.n) },
           { l: lang === 'ar' ? 'الترتيب' : 'Rank', v: '#' + rank + ' / ' + ranked.length },
         ],
         note: srcNote(a),
@@ -57,17 +57,23 @@ export default function Assistant() {
     const medRent = rents[Math.floor(rents.length / 2)]
     const cheapest = ranked[ranked.length - 1].a
     const priciest = ranked[0].a
+    const totalCount = isCommercial ? ((kpis.rent_listings || 0) + (kpis.sale_listings || 0)) : kpis.sale
+    const medPpsf = isCommercial ? kpis.median_rent_ppsf : kpis.median_ppsf
     return {
       card: {
-        title: typeKey === 'all' ? (lang === 'ar' ? 'سوق أراضي عجمان' : 'Ajman land market') : TYPES[typeKey][lang] + (lang === 'ar' ? ' — السوق' : ' market'),
+        title: typeKey === 'all'
+          ? (isCommercial ? (lang === 'ar' ? 'سوق الوحدات التجارية' : 'Ajman commercial market') : (lang === 'ar' ? 'سوق أراضي عجمان' : 'Ajman land market'))
+          : (TYPES[typeKey] ? TYPES[typeKey][lang] : typeKey) + (lang === 'ar' ? ' — السوق' : ' market'),
         area: lang === 'ar' ? 'كل عجمان' : 'All of Ajman', rent: medRent, toOverview: true,
         cells: [
           { l: lang === 'ar' ? 'المناطق' : 'Areas', v: fmt(ranked.length) },
-          { l: lang === 'ar' ? 'إجمالي القطع' : 'Total plots', v: fmt(data.kpis.sale) },
+          { l: isCommercial ? t.unitsWord : (lang === 'ar' ? 'إجمالي القطع' : 'Total plots'), v: fmt(totalCount) },
           { l: lang === 'ar' ? 'الأرخص' : 'Cheapest', v: nm(cheapest) },
           { l: lang === 'ar' ? 'الأعلى' : 'Most expensive', v: nm(priciest) },
         ],
-        note: (lang === 'ar' ? `متوسط سعر القدم ${fmt(data.kpis.median_ppsf)} د.إ · الإيجار = القيمة × عائد 5–8٪` : `Median ${fmt(data.kpis.median_ppsf)} AED/sqft · rent = value × 5–8% yield`),
+        note: isCommercial
+          ? (lang === 'ar' ? `متوسط الإيجار/قدم ${fmt(medPpsf)} د.إ · إيجار سوقي مباشر` : `Median ${fmt(medPpsf)} AED/sqft · live market rent`)
+          : (lang === 'ar' ? `متوسط سعر القدم ${fmt(medPpsf)} د.إ · الإيجار = القيمة × عائد 5–8٪` : `Median ${fmt(medPpsf)} AED/sqft · rent = value × 5–8% yield`),
       },
     }
   }
@@ -76,7 +82,7 @@ export default function Assistant() {
     const ranked = rankByRent(typeKey).slice(0, 5)
     return {
       card: {
-        title: (lang === 'ar' ? 'أعلى المناطق إيجاراً' : 'Top areas by rent') + (typeKey !== 'all' ? ' · ' + TYPES[typeKey][lang] : ''),
+        title: (lang === 'ar' ? 'أعلى المناطق إيجاراً' : 'Top areas by rent') + (typeKey !== 'all' && TYPES[typeKey] ? ' · ' + TYPES[typeKey][lang] : ''),
         list: ranked.map((x) => ({ key: x.a.key, name: nm(x.a), rent: x.rent })),
       },
     }
@@ -84,25 +90,32 @@ export default function Assistant() {
 
   const yieldCard = () => ({
     card: {
-      title: lang === 'ar' ? 'كيف يُحسب الإيجار' : 'How rent is calculated',
-      cells: [
+      title: isCommercial ? (lang === 'ar' ? 'كيف يُقاس الإيجار' : 'How rent is measured') : (lang === 'ar' ? 'كيف يُحسب الإيجار' : 'How rent is calculated'),
+      cells: isCommercial ? [
+        { l: lang === 'ar' ? 'الأساس' : 'Basis', v: lang === 'ar' ? 'إيجار السوق' : 'Market rent' },
+        { l: lang === 'ar' ? 'متوسط الإيجار/قدم' : 'Median rent/sqft', v: fmt(kpis.median_rent_ppsf) },
+        { l: lang === 'ar' ? 'المناطق' : 'Areas', v: fmt(areas.length) },
+        { l: lang === 'ar' ? 'العروض' : 'Listings', v: fmt((kpis.rent_listings || 0) + (kpis.sale_listings || 0)) },
+      ] : [
         { l: lang === 'ar' ? 'نطاق العائد' : 'Yield band', v: '5–8%' },
         { l: lang === 'ar' ? 'الافتراضي' : 'Default', v: '6.5%' },
-        { l: lang === 'ar' ? 'متوسط سعر القدم' : 'Median AED/sqft', v: fmt(data.kpis.median_ppsf) },
-        { l: lang === 'ar' ? 'المناطق' : 'Areas', v: fmt(data.areas.length) },
+        { l: lang === 'ar' ? 'متوسط سعر القدم' : 'Median AED/sqft', v: fmt(kpis.median_ppsf) },
+        { l: lang === 'ar' ? 'المناطق' : 'Areas', v: fmt(areas.length) },
       ],
-      note: lang === 'ar' ? 'إيجار الأرض السنوي = سعر بيع الأرض × العائد. أسعار البيع حقيقية من Bayut وDubizzle وProperty Finder.' : 'Annual land rent = land sale value × yield. Sale prices are real, from Bayut, Dubizzle & Property Finder.',
+      note: isCommercial
+        ? (lang === 'ar' ? 'إيجار الوحدات التجارية مأخوذ مباشرة من عروض السوق الحقيقية (Bayut، Dubizzle، Property Finder).' : 'Commercial unit rent is taken directly from real market listings (Bayut, Dubizzle & Property Finder).')
+        : (lang === 'ar' ? 'إيجار الأرض السنوي = سعر بيع الأرض × العائد. أسعار البيع حقيقية من Bayut وDubizzle وProperty Finder.' : 'Annual land rent = land sale value × yield. Sale prices are real, from Bayut, Dubizzle & Property Finder.'),
       toOverview: true,
     },
   })
 
   function answer(text) {
     const s = text.toLowerCase()
-    const typeKey = /industrial|صناعي/.test(s) ? 'industrial' : /residential|سكني/.test(s) ? 'residential'
-      : /commercial|تجاري/.test(s) ? 'commercial' : /mixed|متعدد/.test(s) ? 'mixed' : 'all'
-    const tname = typeKey === 'all' ? (lang === 'ar' ? 'الأراضي' : 'land') : TYPES[typeKey][lang]
-    let areaHit = data.areas.find((a) => s.includes(a.en.toLowerCase()) || (a.ar && text.includes(a.ar)))
-    if (!areaHit) areaHit = data.areas.find((a) => {
+    const typeKey = isCommercial ? 'all' : (/industrial|صناعي/.test(s) ? 'industrial' : /residential|سكني/.test(s) ? 'residential'
+      : /commercial|تجاري/.test(s) ? 'commercial' : /mixed|متعدد/.test(s) ? 'mixed' : 'all')
+    const tname = typeKey === 'all' ? (isCommercial ? (lang === 'ar' ? 'الوحدات التجارية' : 'commercial units') : (lang === 'ar' ? 'الأراضي' : 'land')) : TYPES[typeKey][lang]
+    let areaHit = areas.find((a) => s.includes(a.en.toLowerCase()) || (a.ar && text.includes(a.ar)))
+    if (!areaHit) areaHit = areas.find((a) => {
       const base = a.en.toLowerCase().replace(/\s*\d+$/, '').replace(/^al\s+/, '').trim()
       return base.length >= 4 && s.includes(base)
     })
@@ -119,7 +132,7 @@ export default function Assistant() {
             { l: lang === 'ar' ? 'متوسط عجمان' : 'Ajman avg', v: t.cur + ' ' + money(avg) },
             { l: lang === 'ar' ? 'الفرق' : 'Difference', v: (diff >= 0 ? '+' : '') + diff + '%' },
             { l: lang === 'ar' ? 'سعر القدم' : 'Price/sqft', v: fmt(areaHit.ppsf) + ' ' + t.cur },
-            { l: lang === 'ar' ? 'القطع' : 'Plots', v: fmt(areaHit.n) },
+            { l: isCommercial ? t.unitsWord : (lang === 'ar' ? 'القطع' : 'Plots'), v: fmt(areaHit.n) },
           ],
           note: srcNote(areaHit),
         },
@@ -142,10 +155,16 @@ export default function Assistant() {
     try { const u = new SpeechSynthesisUtterance(txt); u.lang = lang === 'ar' ? 'ar-AE' : 'en-US'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u) } catch (e) { /* ignore */ }
   }
 
-  const buildContext = () => data.areas.map((a) => {
-    const s = statsFor(a, 'all', yld)
-    return `${a.en} | rent ${Math.round(s.avg)} AED/yr | ${a.ppsf} AED/sqft | ${a.n} plots | trend ${a.trend >= 0 ? '+' : ''}${a.trend}%`
-  }).join('\n')
+  const buildContext = () => {
+    const head = isCommercial
+      ? 'CATEGORY: Commercial units (offices, shops, warehouses, showrooms, buildings, etc.). Figures are real annual MARKET RENT.'
+      : 'CATEGORY: Land plots. Annual rent = land sale value × 5–8% yield (default 6.5%).'
+    const rows = areas.map((a) => {
+      const s = statsFor(a, 'all', yld)
+      return `${a.en} | rent ${Math.round(s.avg)} AED/yr | ${a.ppsf} AED/sqft | ${a.n} ${isCommercial ? 'units' : 'plots'} | trend ${a.trend >= 0 ? '+' : ''}${a.trend}%`
+    }).join('\n')
+    return head + '\n' + rows
+  }
 
   const send = async (text) => {
     const q = (text ?? input).trim()
@@ -226,7 +245,13 @@ export default function Assistant() {
         ))}
       </div>
       <div className="suggs">
-        {[t.sugg1, t.sugg2, t.sugg3, t.sugg4].map((s, i) => <button className="sugg" key={i} onClick={() => send(s)}>{s}</button>)}
+        {(isCommercial
+          ? [lang === 'ar' ? 'أرخص منطقة للمكاتب' : 'Cheapest area for offices',
+             lang === 'ar' ? 'إيجارات المستودعات في الجرف' : 'Warehouse rents in Al Jurf',
+             lang === 'ar' ? 'قارن المحلات بين المناطق' : 'Compare shops across areas',
+             lang === 'ar' ? 'أعلى الإيجارات التجارية' : 'Highest commercial rents']
+          : [t.sugg1, t.sugg2, t.sugg3, t.sugg4]
+        ).map((s, i) => <button className="sugg" key={i} onClick={() => send(s)}>{s}</button>)}
       </div>
       <div className="asst-input">
         <button className={'mic-btn' + (listening ? ' listening' : '')} onClick={mic} title="Speak"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8" /></svg></button>

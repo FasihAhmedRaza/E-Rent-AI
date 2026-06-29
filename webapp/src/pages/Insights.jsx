@@ -23,35 +23,37 @@ const UpArrow = () => (
 )
 
 export default function Insights() {
-  const { data, lang, yld, area, setArea } = useStore()
+  const { data, areas, listings, kpis, lang, yld, area, setArea, isCommercial } = useStore()
   const t = T[lang]
   const rtl = lang === 'ar'
   const [tip, setTip] = useState(null) // {x,y,name,rent,trend,ppsf}
   const wrapRef = useRef(null)
 
-  const areas = useMemo(() => data?.areas || [], [data])
   const nameOf = (a) => (rtl ? a.ar : a.en)
-  // avg annual rent per area (land value × yield), across all types
+  // avg annual rent per area (land value × yield; commercial = market rent), across all types
   const avgRent = (a) => areaAvgRent(a, 'all', yld)
 
   // ---- 1) Exec dashboard ---------------------------------------------------
   const exec = useMemo(() => {
-    if (!data || !areas.length) return null
-    const k = data.kpis || {}
+    if (!areas.length) return null
+    const k = kpis || {}
     let hot = areas[0], top = areas[0]
     areas.forEach((a) => {
       if ((a.trend ?? -Infinity) > (hot.trend ?? -Infinity)) hot = a
       if ((a.ppsf ?? -Infinity) > (top.ppsf ?? -Infinity)) top = a
     })
-    return [
-      { ic: 'plots', l: t.exTotalPlots, v: fmt(k.sale), s: t.exAreas + ': ' + areas.length },
-      { ic: 'yield', l: t.exAvgYield, v: (yld * 100).toFixed(1) + '%', s: '5–8% ' + t.yieldL, gold: true },
-      { ic: 'price', l: t.exAvgPrice, v: fmt(k.median_ppsf) + ' ' + t.cur, s: t.sqft },
+    const count = isCommercial ? ((k.rent_listings || 0) + (k.sale_listings || 0)) : k.sale
+    const medppsf = isCommercial ? k.median_rent_ppsf : k.median_ppsf
+    const cards = [
+      { ic: 'plots', l: isCommercial ? (lang === 'ar' ? 'إجمالي العروض' : 'Total listings') : t.exTotalPlots, v: fmt(count), s: t.exAreas + ': ' + areas.length },
+      { ic: 'price', l: isCommercial ? t.kAvgFC : t.exAvgPrice, v: fmt(medppsf) + ' ' + t.cur, s: t.sqft },
       { ic: 'hot', l: t.exHottest, v: nameOf(hot), trend: hot.trend },
       { ic: 'top', l: t.exTopArea, v: nameOf(top), s: fmt(top.ppsf) + ' ' + t.cur + '/' + t.sqft },
     ]
+    if (!isCommercial) cards.splice(1, 0, { ic: 'yield', l: t.exAvgYield, v: (yld * 100).toFixed(1) + '%', s: '5–8% ' + t.yieldL, gold: true })
+    return cards
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, lang, yld])
+  }, [areas, kpis, lang, yld, isCommercial])
 
   // ---- 2) Opportunity map (SVG scatter) ------------------------------------
   const opp = useMemo(() => {
@@ -135,22 +137,24 @@ export default function Insights() {
     return m
   }, [sortedByPpsf])
 
-  const plotsOf = (a) => (data?.listings || []).filter((l) => l.area === a.key).length
+  const plotsOf = (a) => (listings || []).filter((l) => l.area === a.key).length
 
   const cmpRows = useMemo(() => {
     const a = (k) => byKey[k]
-    return [
-      { l: t.arraSale, f: (k) => fmt(a(k).ppsf) + ' ' + t.cur, best: (k) => -(a(k).ppsf || 0) },
+    const ppsfLbl = isCommercial ? (lang === 'ar' ? 'الإيجار/قدم' : 'Rent/sqft') : t.arraSale
+    const rows = [
+      { l: ppsfLbl, f: (k) => fmt(a(k).ppsf) + ' ' + t.cur, best: (k) => -(a(k).ppsf || 0) },
       { l: t.compAvgRent, f: (k) => fmt(avgRent(a(k))) + ' ' + t.cur, best: (k) => avgRent(a(k)) },
-      { l: t.yieldL, f: () => (yld * 100).toFixed(1) + '%', best: () => null },
-      { l: t.compPlots, f: (k) => fmt(plotsOf(a(k))), best: (k) => plotsOf(a(k)) },
+      { l: isCommercial ? t.unitsWord : t.compPlots, f: (k) => fmt(plotsOf(a(k))), best: (k) => plotsOf(a(k)) },
       { l: t.compTrend, f: (k) => (a(k).trend > 0 ? '+' : '') + a(k).trend + '%', best: (k) => a(k).trend },
       { l: t.compRank, f: (k) => '#' + ranks[k], best: (k) => -ranks[k] },
     ]
+    if (!isCommercial) rows.splice(2, 0, { l: t.yieldL, f: () => (yld * 100).toFixed(1) + '%', best: () => null })
+    return rows
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [byKey, ranks, t, yld, data])
+  }, [byKey, ranks, t, yld, listings, isCommercial, lang])
 
-  const selKeys = effPicks.filter(Boolean)
+  const selKeys = effPicks.filter((k) => k && byKey[k])
 
   if (!data || data.error) {
     return <section className="view" id="v-insights" />
@@ -213,7 +217,7 @@ export default function Insights() {
                 <line x1={opp.pl} y1={opp.pt} x2={opp.pl} y2={opp.H - opp.pb} className="opp-axis" />
                 <line x1={opp.pl} y1={opp.H - opp.pb} x2={opp.W - opp.pr} y2={opp.H - opp.pb} className="opp-axis" />
                 {/* axis titles */}
-                <text x={opp.pl + opp.iw / 2} y={opp.H - 6} className="opp-axt" textAnchor="middle">{t.oppX}</text>
+                <text x={opp.pl + opp.iw / 2} y={opp.H - 6} className="opp-axt" textAnchor="middle">{isCommercial ? (lang === 'ar' ? 'الإيجار (درهم/قدم)' : 'Rent (AED/sqft)') : t.oppX}</text>
                 <text transform={`translate(${rtl ? opp.W - 12 : 15},${opp.pt + opp.ih / 2}) rotate(${rtl ? 90 : -90})`}
                   className="opp-axt" textAnchor="middle">{t.oppY}</text>
                 {/* bubbles */}

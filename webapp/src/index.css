@@ -60,6 +60,13 @@ html[dir=rtl] select{padding:11px 15px 11px 40px}
 select:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(46,139,129,.13)}
 .sel::after{content:"";position:absolute;inset-inline-end:15px;top:50%;width:8px;height:8px;border-inline-start:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-65%) rotate(-45deg);pointer-events:none}
 html[dir=rtl] .sel::after{border-inline-start:none;border-inline-end:2px solid var(--muted);transform:translateY(-65%) rotate(45deg)}
+.seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px;box-shadow:var(--sh-sm)}
+.seg button{font-family:inherit;font-weight:700;font-size:.86rem;color:var(--muted);background:transparent;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;white-space:nowrap;transition:.15s}
+.seg button.on{color:#fff;background:linear-gradient(150deg,var(--pine-soft),var(--pine2));box-shadow:0 5px 13px -7px rgba(11,74,69,.6)}
+.seg button:not(.on):hover{color:var(--ink);background:var(--bg)}
+.lt-badge{display:inline-block;font-size:.62rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px;vertical-align:middle}
+.lt-badge.rent{color:#0B4A45;background:rgba(46,139,129,.16)}
+.lt-badge.sale{color:#8a6a16;background:rgba(194,152,47,.18)}
 .btn{font-family:"Tajawal";font-weight:700;font-size:.9rem;color:#fff;background:linear-gradient(150deg,var(--pine-soft),var(--pine2));border-radius:11px;padding:11px 22px;box-shadow:0 6px 16px -7px rgba(11,74,69,.6);transition:.15s;display:inline-flex;align-items:center;gap:8px}
 .btn:hover{filter:brightness(1.08)}.btn:active{transform:translateY(1px)}
 .btn.ghost{background:var(--card);color:var(--pine);border:1px solid var(--line);box-shadow:var(--sh-sm)}

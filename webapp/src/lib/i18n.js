@@ -5,6 +5,22 @@ export const TYPES = {
   mixed: { en: 'Mixed-use land', ar: 'أرض متعددة' },
 }
 
+// commercial unit subtypes (keys match make_snapshot.UNIT_SUBTYPES)
+export const TYPES_COMMERCIAL = {
+  office: { en: 'Office', ar: 'مكتب' },
+  shop: { en: 'Shop / Retail', ar: 'محل تجاري' },
+  warehouse: { en: 'Warehouse', ar: 'مستودع' },
+  showroom: { en: 'Showroom', ar: 'معرض' },
+  commercial_building: { en: 'Commercial building', ar: 'مبنى تجاري' },
+  commercial_villa: { en: 'Commercial villa', ar: 'فيلا تجارية' },
+  commercial_floor: { en: 'Commercial floor', ar: 'طابق تجاري' },
+  labour_camp: { en: 'Labour accommodation', ar: 'سكن عمال' },
+  factory: { en: 'Factory', ar: 'مصنع' },
+  bulk_unit: { en: 'Bulk unit', ar: 'وحدة بالجملة' },
+  coworking: { en: 'Co-working', ar: 'مساحة عمل مشتركة' },
+  other_commercial: { en: 'Other commercial', ar: 'تجاري آخر' },
+}
+
 export const T = {
   en: {
     dir: 'ltr', brand: 'E‑Rent AI', brandSub: 'Ajman · Land Intelligence', navLabel: 'Sections',
@@ -38,6 +54,15 @@ export const T = {
     sugg3: 'Residential land in Al Zorah', sugg4: 'Highest land rents in Ajman',
     asstPlots: 'plots',
     arraSale: 'Land price', yieldL: 'Yield',
+    categoryLbl: 'Category', catLand: 'Land', catCommercial: 'Commercial units',
+    typeLblC: 'Unit type', unitsWord: 'units', miUnits: 'Listings',
+    marketRentNote: 'Live market rent from real listings · sources: Bayut, Dubizzle, Property Finder',
+    rangeEyebrowC: 'Annual commercial rent range', kAvgC: 'Average rent', kAvgFC: 'avg. rent/sqft',
+    chartTitleC: 'Average commercial rent by area', chartSubC: 'Top areas for the selected unit type (AED/yr)',
+    mapSubC: 'Per-area commercial rent (live market). Tap any marker for details.',
+    mapNoteC: 'Per-area commercial rent — live market rate from listings. Tap any marker for details. (Map needs internet.)',
+    thPropC: 'Unit', thRentC: 'Rent / price', ltRent: 'Rent', ltSale: 'Sale', perYearShort: '/yr',
+    asstWelcomeC: "Hi! Ask me about commercial rents in Ajman — for example: the cheapest area for offices, warehouse rents in Al Jurf, or compare shops across areas. All answers use live market rent.",
     exAreas: 'Areas', exTotalPlots: 'Total plots', exAvgYield: 'Avg yield', exAvgPrice: 'Avg land price/sqft',
     exHottest: 'Fastest growing', exTopArea: 'Most expensive',
     oppTitle: 'Opportunity Map', oppSub: 'Trend vs land price — bubble size = rent, colour = trend. Tap any area.',
@@ -88,6 +113,15 @@ export const T = {
     sugg3: 'أراضٍ سكنية في الزوراء', sugg4: 'أعلى إيجارات الأراضي في عجمان',
     asstPlots: 'عرضاً',
     arraSale: 'سعر الأرض', yieldL: 'العائد',
+    categoryLbl: 'الفئة', catLand: 'أراضي', catCommercial: 'وحدات تجارية',
+    typeLblC: 'نوع الوحدة', unitsWord: 'وحدة', miUnits: 'العروض',
+    marketRentNote: 'إيجار السوق الفعلي من العروض الحقيقية · المصادر: Bayut، Dubizzle، Property Finder',
+    rangeEyebrowC: 'نطاق الإيجار التجاري السنوي', kAvgC: 'متوسط الإيجار', kAvgFC: 'متوسط الإيجار/قدم',
+    chartTitleC: 'متوسط الإيجار التجاري حسب المنطقة', chartSubC: 'أعلى المناطق لنوع الوحدة المحدد (د.إ/سنة)',
+    mapSubC: 'الإيجار التجاري لكل منطقة (سوق مباشر). اضغط أي علامة للتفاصيل.',
+    mapNoteC: 'الإيجار التجاري لكل منطقة — سعر السوق المباشر من العروض. اضغط أي علامة للتفاصيل. (الخريطة تحتاج إنترنت.)',
+    thPropC: 'الوحدة', thRentC: 'الإيجار / السعر', ltRent: 'إيجار', ltSale: 'بيع', perYearShort: '/سنة',
+    asstWelcomeC: 'مرحباً! اسألني عن الإيجارات التجارية في عجمان — مثلاً: أرخص منطقة للمكاتب، إيجارات المستودعات في الجرف، أو قارن المحلات بين المناطق. كل الإجابات تستخدم إيجار السوق المباشر.',
     exAreas: 'المناطق', exTotalPlots: 'إجمالي القطع', exAvgYield: 'متوسط العائد', exAvgPrice: 'متوسط سعر الأرض/قدم',
     exHottest: 'الأسرع نمواً', exTopArea: 'الأعلى إيجاراً',
     oppTitle: 'خريطة الفرص', oppSub: 'الاتجاه مقابل سعر الأرض — حجم الفقاعة = الإيجار، اللون = الاتجاه. اضغط على أي منطقة.',

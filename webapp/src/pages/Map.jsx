@@ -23,7 +23,7 @@ const TILES = {
 }
 
 export default function Map() {
-  const { data, lang, area, setArea, type, yld } = useStore()
+  const { data, areas, lang, area, setArea, type, yld, isCommercial } = useStore()
   const t = T[lang]
   const navigate = useNavigate()
   const [mapMode, setMapMode] = useState('standard')
@@ -36,15 +36,17 @@ export default function Map() {
   const elRef = useRef(null)         // map container div
 
   const nm = (x) => (lang === 'ar' ? x.ar : x.en)
+  const unitWord = isCommercial ? t.unitsWord : t.mapPlots
+  const arraLabel = isCommercial ? (lang === 'ar' ? 'متوسط سعر البيع' : 'Avg sale price') : t.arraSale
+  const saleAvgOf = (x) => (isCommercial ? (x.saleStats && x.saleStats.avg) : x.vavg)
 
-  // ---- ranked areas by average rent (sale value × yield) ----
+  // ---- ranked areas by average rent (land: sale value × yield; commercial: market rent) ----
   const ranked = useMemo(() => {
-    if (!data) return []
-    return [...data.areas]
+    return [...areas]
       .map((x) => ({ x, rent: areaAvgRent(x, type, yld) }))
       .filter((r) => r.rent > 0)
       .sort((r1, r2) => r2.rent - r1.rent)
-  }, [data, type, yld])
+  }, [areas, type, yld])
 
   const bounds = useMemo(() => {
     const rents = ranked.map((r) => r.rent)
@@ -54,7 +56,7 @@ export default function Map() {
   const colorFor = (rent) => lerp((rent - bounds.mn) / ((bounds.mx - bounds.mn) || 1))
 
   // ---- selected area derived info ----
-  const sel = data ? (data.areas.find((x) => x.key === area) || data.areas[0]) : null
+  const sel = areas.length ? (areas.find((x) => x.key === area) || areas[0]) : null
   const selStats = sel ? statsFor(sel, type, yld) : null
   const selRent = sel ? areaAvgRent(sel, type, yld) : 0
   const rank = sel ? ranked.findIndex((r) => r.x.key === sel.key) + 1 : 0
@@ -90,7 +92,7 @@ export default function Map() {
   // ---- (re)build markers when data / mode / selection / lang changes ----
   useEffect(() => {
     const m = mapRef.current
-    if (mapMode === 'offline' || !m || !layerRef.current || !data) return
+    if (mapMode === 'offline' || !m || !layerRef.current || !areas.length) return
     setBaseLayer(mapMode)
     layerRef.current.clearLayers()
     markersRef.current = {}
@@ -108,14 +110,16 @@ export default function Map() {
       mk.bindTooltip(nm(x) + ' · ' + fmtK(rent), { permanent: true, direction: 'top', className: 'price-tip', offset: [0, -4] })
       const st = statsFor(x, type, yld)
       const src = x.sources || {}
+      const sa = saleAvgOf(x)
+      const arraRow = sa ? `<div class="mp-arra"><span>${arraLabel}</span> <b class="num">${fmt(sa)} ${t.cur}</b></div>` : ''
       mk.bindPopup(
         `<div class="mp"><div class="mp-h">${nm(x)}</div>` +
         `<div class="mp-avg"><span class="num">${fmt(rent)}</span> ${t.cur} <span>${t.mapAvg}</span></div>` +
-        `<div class="mp-arra"><span>${t.arraSale}</span> <b class="num">${fmt(x.vavg)} ${t.cur}</b></div>` +
+        arraRow +
         `<div class="mp-row"><span class="src bayut"><i></i>Bayut</span><b class="num">${fmt(src.bayut)} ${t.cur}/${t.sqft}</b></div>` +
         `<div class="mp-row"><span class="src dub"><i></i>Dubizzle</span><b class="num">${fmt(src.dubizzle)} ${t.cur}/${t.sqft}</b></div>` +
         `<div class="mp-row"><span class="src pf"><i></i>Property Finder</span><b class="num">${fmt(src.propertyfinder)} ${t.cur}/${t.sqft}</b></div>` +
-        `<div class="mp-foot">${t.mapRange}: <span class="num">${fmt(st ? st.low : 0)}–${fmt(st ? st.high : 0)}</span> · <span class="num">${st ? st.n : 0}</span> ${t.mapPlots}</div></div>`,
+        `<div class="mp-foot">${t.mapRange}: <span class="num">${fmt(st ? st.low : 0)}–${fmt(st ? st.high : 0)}</span> · <span class="num">${st ? st.n : 0}</span> ${unitWord}</div></div>`,
         { className: 'price-pop' }
       )
       mk.on('click', () => setArea(x.key))
@@ -124,7 +128,7 @@ export default function Map() {
       if (isSel) mk.bringToFront()
     })
     setTimeout(() => { try { m.invalidateSize() } catch (e) { /* noop */ } }, 60)
-  }, [data, mapMode, lang, type, yld, sel?.key, ranked])
+  }, [areas, mapMode, lang, type, yld, sel?.key, ranked])
 
   // ---- handle mode switch: ensure map exists, swap base layer, resize ----
   useEffect(() => {
@@ -146,6 +150,7 @@ export default function Map() {
   const offline = mapMode === 'offline'
   const yr = lang === 'ar' ? 'سنة' : 'yr'
   const srcs = sel.sources || {}
+  const selSale = saleAvgOf(sel)
 
   return (
     <section className="view" id="v-map" style={{ display: 'block' }}>
@@ -160,7 +165,7 @@ export default function Map() {
               ))}
             </div>
           </div>
-          <p className="sec-s">{t.mapSub}</p>
+          <p className="sec-s">{isCommercial ? t.mapSubC : t.mapSub}</p>
 
           {/* OFFLINE: coloured district ladder */}
           <div className="water-strip" data-l={t.water} style={{ display: offline ? '' : 'none' }} />
@@ -169,6 +174,7 @@ export default function Map() {
               const pct = Math.max(6, Math.round(r.rent / (bounds.mx || 1) * 100))
               const col = colorFor(r.rent)
               const ss = r.x.sources || {}
+              const rsa = saleAvgOf(r.x)
               return (
                 <div key={r.x.key} className={'lad-row' + (r.x.key === sel.key ? ' sel' : '')} onClick={() => setArea(r.x.key)}>
                   <div className="lad-rank">{i + 1}</div>
@@ -179,7 +185,7 @@ export default function Map() {
                     </div>
                     <div className="lad-bar"><div className="lad-fill" style={{ width: pct + '%', background: col }} /></div>
                     <div className="lad-sub">
-                      <span className="lad-arra">{t.arraSale}: <b className="num">{money(r.x.vavg)}</b></span>
+                      {rsa ? <span className="lad-arra">{arraLabel}: <b className="num">{money(rsa)}</b></span> : <span className="lad-arra" />}
                       <span className="lad-src">
                         <span><i style={{ background: '#1F9E6E' }} />{fmtK(ss.bayut)}</span>
                         <span><i style={{ background: '#D43B33' }} />{fmtK(ss.dubizzle)}</span>
@@ -202,7 +208,7 @@ export default function Map() {
             <span className="src bayut maplg"><i />Bayut</span>
             <span className="src dub maplg"><i />Dubizzle</span>
           </div>
-          <p className="map-note">{offline ? t.mapNoteTiles : t.mapNote}</p>
+          <p className="map-note">{offline ? t.mapNoteTiles : (isCommercial ? t.mapNoteC : t.mapNote)}</p>
         </div>
 
         {/* AREA INFO CARD */}
@@ -217,16 +223,18 @@ export default function Map() {
             <span className="l">{t.mapRange}</span>
             <span className="v"><span className="num">{fmt(selStats ? selStats.low : 0)}</span>–<span className="num">{fmt(selStats ? selStats.high : 0)}</span> <span className="cur">{t.cur}</span></span>
           </div>
-          <div className="ai-stat">
-            <span className="l">{t.arraSale}</span>
-            <span className="v"><span className="num">{money(sel.vavg)}</span> <span className="cur">{t.cur}</span></span>
-          </div>
+          {selSale ? (
+            <div className="ai-stat">
+              <span className="l">{arraLabel}</span>
+              <span className="v"><span className="num">{money(selSale)}</span> <span className="cur">{t.cur}</span></span>
+            </div>
+          ) : null}
           <div className="ai-stat">
             <span className="l">{t.perSqftL}</span>
             <span className="v"><span className="num">{fmt(selStats ? selStats.ppsf : sel.ppsf)}</span> <span className="cur">{t.cur}/{t.sqft}</span></span>
           </div>
           <div className="ai-stat">
-            <span className="l">{t.miListings}</span>
+            <span className="l">{isCommercial ? t.miUnits : t.miListings}</span>
             <span className="v num">{fmt(selStats ? selStats.n : sel.n)}</span>
           </div>
           <div className="ai-stat">
