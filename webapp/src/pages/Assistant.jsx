@@ -1,9 +1,60 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore, statsFor, areaAvgRent } from '../lib/store'
-import { T, TYPES } from '../lib/i18n'
+import { T, TYPES, TYPES_COMMERCIAL } from '../lib/i18n'
 import { fmt, money } from '../lib/format'
 import { askGemini } from '../lib/ai'
+
+const EXT = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3h7v7" /><path d="M10 14 21 3" /><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" /></svg>
+const SRC_CLASS = { bayut: 'bayut', dubizzle: 'dub', propertyfinder: 'pf' }
+const SRC_NAME = { bayut: 'Bayut', dubizzle: 'Dubizzle', propertyfinder: 'Property Finder' }
+const UNIT_SYN = {
+  office: ['office', 'offices', 'مكتب'],
+  shop: ['shop', 'shops', 'retail', 'محل'],
+  warehouse: ['warehouse', 'warehouses', 'storage', 'مستودع', 'مخزن'],
+  showroom: ['showroom', 'showrooms', 'معرض'],
+  commercial_building: ['building', 'buildings', 'مبنى'],
+  commercial_villa: ['commercial villa', 'villa', 'فيلا'],
+  labour_camp: ['labour', 'labor', 'staff accommodation', 'سكن عمال'],
+  factory: ['factory', 'factories', 'مصنع'],
+}
+const LAND_SYN = {
+  commercial: ['commercial land', 'commercial plot', 'أرض تجارية'],
+  industrial: ['industrial', 'صناعي'],
+  residential: ['residential', 'سكني'],
+  mixed: ['mixed', 'متعدد'],
+}
+
+// horizontal, swipe-left/right carousel of real listing cards (each opens the original ad)
+function ListingCarousel({ title, sub, items, comm, lang, t, areaName, onOpen }) {
+  const ref = useRef(null)
+  const tName = (k) => ((comm ? TYPES_COMMERCIAL : TYPES)[k]?.[lang]) || k
+  const scroll = (d) => { if (ref.current) ref.current.scrollBy({ left: d * 250, behavior: 'smooth' }) }
+  return (
+    <div className="ans-card cards-card">
+      <div className="ac-t">{title}</div>
+      {sub && <div className="ac-sub">{sub}</div>}
+      <div className="ac-carousel">
+        <button className="ac-arrow" onClick={() => scroll(-1)} aria-label="prev">‹</button>
+        <div className="lc-row" ref={ref}>
+          {items.map((l) => (
+            <button className="lc" key={l.id} onClick={() => onOpen(l)} title={l.title || ''}>
+              <div className="lc-top">
+                <span className="lc-type">{tName(l.type)}</span>
+                <span className={'lt-badge ' + (l.lt === 'rent' ? 'rent' : 'sale')}>{l.lt === 'rent' ? t.ltRent : t.ltSale}</span>
+              </div>
+              <div className="lc-price num">{t.cur} {money(l.value)}{l.lt === 'rent' ? <small> {t.perYearShort}</small> : ''}</div>
+              <div className="lc-title">{(l.title || '—').slice(0, 64)}</div>
+              <div className="lc-meta">{areaName(l.area)} · <span className="num">{fmt(l.size)}</span> {t.sqft} · <span className="num">{fmt(l.ppsf)}</span>/{t.sqft}</div>
+              <div className="lc-foot"><span className={'src ' + (SRC_CLASS[l.src] || 'bayut')}><i />{SRC_NAME[l.src] || l.src}</span><span className="lc-open">{lang === 'ar' ? 'فتح' : 'Open'} {EXT}</span></div>
+            </button>
+          ))}
+        </div>
+        <button className="ac-arrow" onClick={() => scroll(1)} aria-label="next">›</button>
+      </div>
+    </div>
+  )
+}
 
 export default function Assistant() {
   const { data, areas, kpis, lang, yld, setArea, setType, isCommercial } = useStore()
@@ -150,6 +201,65 @@ export default function Assistant() {
     return marketCard('all')
   }
 
+  const openAd = (l) => { if (l && l.url) window.open(l.url, '_blank', 'noopener,noreferrer') }
+  const allAreaName = (k) => {
+    const src = (data?.areas || []).concat(data?.commercial?.areas || [])
+    const a = src.find((x) => x.key === k)
+    return a ? (lang === 'ar' ? a.ar : a.en) : k
+  }
+
+  // parse a price ceiling from the query: "within 1 million", "under 500k", "200000", "1.5m"
+  const priceCap = (text) => {
+    const s = text.toLowerCase().replace(/,/g, '')
+    const m = s.match(/(?:under|within|below|less than|max|up to|upto|budget(?:\s*of)?|cheaper than|<=?|أقل\s*من|حتى)\s*(?:aed|درهم)?\s*(\d+(?:\.\d+)?)\s*(million|mil|mn|m|thousand|k)?/)
+      || s.match(/(\d+(?:\.\d+)?)\s*(million|mil|mn|m|thousand|k)\b/)
+      || s.match(/\b(\d{4,})\b/)
+    if (!m) return null
+    let n = parseFloat(m[1]); const u = m[2] || ''
+    if (u[0] === 'm') n *= 1e6; else if (u[0] === 'k' || u.startsWith('thous')) n *= 1e3
+    return Math.round(n)
+  }
+  const detectType = (s) => {
+    for (const [k, syns] of Object.entries(UNIT_SYN)) if (syns.some((w) => s.includes(w))) return { key: k, comm: true }
+    for (const [k, syns] of Object.entries(LAND_SYN)) if (syns.some((w) => s.includes(w))) return { key: k, comm: false }
+    return null
+  }
+
+  // "show me warehouses within 1 million" → a scrollable carousel of real matching listings
+  const listingQuery = (text) => {
+    const s = text.toLowerCase()
+    if (/compare|versus|\bvs\b|قارن|trend|اتجاه|yield|عائد|average|متوسط/.test(s)) return null
+    const cap = priceCap(text)
+    const td = detectType(s)
+    const browse = /\bshow|list|listing|find|display|browse|اعرض|أعرض|عرض|ابحث|اعطني|أعطني/.test(s)
+    const ltWanted = /for rent|to rent|rental|for lease|إيجار|للايجار|للإيجار/.test(s) ? 'rent'
+      : /for sale|to buy|\bbuy\b|\bsale\b|للبيع|للشراء/.test(s) ? 'sale' : null
+    if (!browse && cap == null && !(td && ltWanted)) return null
+
+    const comm = td ? td.comm : isCommercial
+    const dataset = td ? (td.comm ? (data?.commercial?.listings || []) : (data?.listings || [])) : (listings || [])
+    const areaSrc = (data?.areas || []).concat(data?.commercial?.areas || [])
+    const areaHit = areaSrc.find((a) => s.includes((a.en || '').toLowerCase()) || (a.ar && text.includes(a.ar)))
+    const desc = /highest|expensive|premium|biggest|largest|أعلى|أغلى/.test(s)
+    let rows = dataset.filter((l) => l.value && l.size
+      && (td ? l.type === td.key : true)
+      && (ltWanted ? l.lt === ltWanted : true)
+      && (areaHit ? l.area === areaHit.key : true)
+      && (cap != null ? l.value <= cap : true))
+    rows = rows.sort((a, b) => (desc ? (b.value - a.value) : (a.value - b.value))).slice(0, 24)
+
+    const tlabel = td ? ((td.comm ? TYPES_COMMERCIAL : TYPES)[td.key]?.[lang] || td.key)
+      : (comm ? (lang === 'ar' ? 'وحدات تجارية' : 'commercial units') : (lang === 'ar' ? 'أراضٍ' : 'land'))
+    const capTxt = cap != null ? (lang === 'ar' ? ` ضمن ${t.cur} ${money(cap)}` : ` within ${t.cur} ${money(cap)}`) : ''
+    const inArea = areaHit ? ` · ${lang === 'ar' ? areaHit.ar : areaHit.en}` : ''
+    if (!rows.length) return { text: lang === 'ar' ? `لا توجد عروض مطابقة (${tlabel}${capTxt}). جرّب نطاقاً أو نوعاً مختلفاً.` : `No matching listings for ${tlabel}${capTxt}. Try a different range or type.` }
+    return {
+      cards: rows, comm,
+      title: `${tlabel}${capTxt}${inArea}`,
+      sub: lang === 'ar' ? `${rows.length} عرض من Bayut · Dubizzle · Property Finder — مرّر يميناً/يساراً` : `${rows.length} listings from Bayut · Dubizzle · Property Finder — scroll left/right`,
+    }
+  }
+
   const speak = (txt) => {
     if (muted || !window.speechSynthesis || !txt) return
     try { const u = new SpeechSynthesisUtterance(txt); u.lang = lang === 'ar' ? 'ar-AE' : 'en-US'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u) } catch (e) { /* ignore */ }
@@ -170,6 +280,13 @@ export default function Assistant() {
     const q = (text ?? input).trim()
     if (!q) return
     setInput('')
+    // listing-browse intent → instant carousel of real listings (deterministic, with live ad links)
+    const lc = listingQuery(q)
+    if (lc) {
+      setMsgs((m) => [...m, { role: 'user', text: q }, { role: 'bot', ...lc }])
+      speak(lc.title || lc.text || '')
+      return
+    }
     setMsgs((m) => [...m, { role: 'user', text: q }, { role: 'bot', text: t.asstThinking, pending: true }])
     let final
     try {
@@ -239,8 +356,10 @@ export default function Assistant() {
       </div>
       <div className="conv" ref={convRef}>
         {msgs.map((m, i) => (
-          <div className={'msg ' + m.role + (m.card ? ' is-card' : '')} key={i}>
-            {m.card ? <Card c={m.card} /> : m.text}
+          <div className={'msg ' + m.role + ((m.card || m.cards) ? ' is-card' : '')} key={i}>
+            {m.cards
+              ? <ListingCarousel title={m.title} sub={m.sub} items={m.cards} comm={m.comm} lang={lang} t={t} areaName={allAreaName} onOpen={openAd} />
+              : m.card ? <Card c={m.card} /> : m.text}
           </div>
         ))}
       </div>
