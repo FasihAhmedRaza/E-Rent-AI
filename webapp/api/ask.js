@@ -10,9 +10,9 @@ export default async function handler(req, res) {
   if (!key) { res.status(503).json({ error: 'AI not configured (GEMINI_API_KEY missing)' }); return }
 
   try {
-    const { question, context, lang } = req.body || {}
+    const { question, context, lang, history } = req.body || {}
     if (!question) { res.status(400).json({ error: 'No question' }); return }
-    const answer = await geminiAnswer({ question, context, lang, key, model: process.env.GEMINI_MODEL })
+    const answer = await geminiAnswer({ question, context, lang, history, key, model: process.env.GEMINI_MODEL })
     res.status(200).json({ answer })
   } catch (e) {
     res.status(502).json({ error: String(e && e.message ? e.message : e) })

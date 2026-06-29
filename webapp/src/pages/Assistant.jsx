@@ -64,6 +64,7 @@ export default function Assistant() {
   const [input, setInput] = useState('')
   const [muted, setMuted] = useState(false)
   const [listening, setListening] = useState(false)
+  const [chips, setChips] = useState([])
   const convRef = useRef(null)
   const recog = useRef(null)
   const nm = (a) => (lang === 'ar' ? a.ar : a.en)
@@ -225,6 +226,43 @@ export default function Assistant() {
     return null
   }
 
+  // suggestion chips — start as category defaults, then follow the conversation
+  const defaultChips = () => (isCommercial
+    ? [lang === 'ar' ? 'أرخص منطقة للمكاتب' : 'Cheapest area for offices',
+       lang === 'ar' ? 'إيجارات المستودعات' : 'Warehouse rents',
+       lang === 'ar' ? 'أعلى الإيجارات التجارية' : 'Highest commercial rents',
+       lang === 'ar' ? 'كيف يُقاس الإيجار' : 'How is rent measured']
+    : [t.sugg1, t.sugg2, t.sugg3, t.sugg4])
+
+  const nextChips = (q) => {
+    const s = q.toLowerCase()
+    const td = detectType(s)
+    const areaSrc = (data?.areas || []).concat(data?.commercial?.areas || [])
+    const areaHit = areaSrc.find((a) => s.includes((a.en || '').toLowerCase()) || (a.ar && q.includes(a.ar)))
+    const aN = areaHit ? (lang === 'ar' ? areaHit.ar : areaHit.en) : null
+    const out = []
+    if (td) {
+      const map = td.comm ? TYPES_COMMERCIAL : TYPES
+      const tl = map[td.key]?.[lang] || td.key
+      out.push(lang === 'ar' ? `${tl} للبيع` : `${tl} for sale`)
+      out.push(lang === 'ar' ? `أرخص منطقة لـ${tl}` : `Cheapest area for ${String(tl).toLowerCase()}`)
+      const sib = td.comm ? (td.key === 'warehouse' ? 'office' : td.key === 'office' ? 'shop' : 'warehouse')
+        : (td.key === 'commercial' ? 'industrial' : 'commercial')
+      const sl = map[sib]?.[lang] || sib
+      out.push(lang === 'ar' ? `إيجارات ${sl}` : `${sl} rents`)
+    }
+    if (aN) {
+      out.push(lang === 'ar' ? `قارن ${aN} بالمتوسط` : `Compare ${aN} with the average`)
+      out.push(lang === 'ar' ? `الاتجاه في ${aN}` : `Trend in ${aN}`)
+    }
+    for (const d of defaultChips()) { if (out.length >= 4) break; if (!out.includes(d)) out.push(d) }
+    return out.slice(0, 4)
+  }
+
+  useEffect(() => { setChips(defaultChips()) /* reset to category defaults */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCommercial, lang])
+
   // "show me warehouses within 1 million" → a scrollable carousel of real matching listings
   const listingQuery = (text) => {
     const s = text.toLowerCase()
@@ -253,8 +291,15 @@ export default function Assistant() {
     const capTxt = cap != null ? (lang === 'ar' ? ` ضمن ${t.cur} ${money(cap)}` : ` within ${t.cur} ${money(cap)}`) : ''
     const inArea = areaHit ? ` · ${lang === 'ar' ? areaHit.ar : areaHit.en}` : ''
     if (!rows.length) return { text: lang === 'ar' ? `لا توجد عروض مطابقة (${tlabel}${capTxt}). جرّب نطاقاً أو نوعاً مختلفاً.` : `No matching listings for ${tlabel}${capTxt}. Try a different range or type.` }
+    const prices = rows.map((r) => r.value)
+    const mn = Math.min(...prices), mx = Math.max(...prices)
+    const cheapest = rows.reduce((a, b) => (a.value <= b.value ? a : b))
+    const cArea = allAreaName(cheapest.area)
+    const intro = lang === 'ar'
+      ? `إليك ${rows.length} عرضاً لـ${tlabel}${inArea}${capTxt} من Bayut وDubizzle وProperty Finder. تتراوح الأسعار من ${t.cur} ${money(mn)} إلى ${t.cur} ${money(mx)}، وأرخصها نحو ${t.cur} ${money(cheapest.value)} في ${cArea}. مرّر البطاقات يميناً/يساراً واضغط «فتح» لعرض الإعلان الأصلي.`
+      : `Here are ${rows.length} ${String(tlabel).toLowerCase()} listings${inArea}${capTxt} from Bayut, Dubizzle and Property Finder. Prices range from ${t.cur} ${money(mn)} to ${t.cur} ${money(mx)}, with the most affordable around ${t.cur} ${money(cheapest.value)} in ${cArea}. Scroll the cards left or right and tap Open to view the original ad.`
     return {
-      cards: rows, comm,
+      cards: rows, comm, intro,
       title: `${tlabel}${capTxt}${inArea}`,
       sub: lang === 'ar' ? `${rows.length} عرض من Bayut · Dubizzle · Property Finder — مرّر يميناً/يساراً` : `${rows.length} listings from Bayut · Dubizzle · Property Finder — scroll left/right`,
     }
@@ -265,32 +310,52 @@ export default function Assistant() {
     try { const u = new SpeechSynthesisUtterance(txt); u.lang = lang === 'ar' ? 'ar-AE' : 'en-US'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u) } catch (e) { /* ignore */ }
   }
 
+  // both datasets so follow-ups stay on-topic regardless of the Land/Commercial toggle
   const buildContext = () => {
-    const head = isCommercial
-      ? 'CATEGORY: Commercial units (offices, shops, warehouses, showrooms, buildings, etc.). Figures are real annual MARKET RENT.'
-      : 'CATEGORY: Land plots. Annual rent = land sale value × 5–8% yield (default 6.5%).'
-    const rows = areas.map((a) => {
-      const s = statsFor(a, 'all', yld)
-      return `${a.en} | rent ${Math.round(s.avg)} AED/yr | ${a.ppsf} AED/sqft | ${a.n} ${isCommercial ? 'units' : 'plots'} | trend ${a.trend >= 0 ? '+' : ''}${a.trend}%`
-    }).join('\n')
-    return head + '\n' + rows
+    const land = (data?.areas || []).map((a) =>
+      `${a.en} | rent ${Math.round((a.vavg || 0) * 0.065)} AED/yr | ${a.ppsf} AED/sqft | ${a.n} plots | trend ${a.trend >= 0 ? '+' : ''}${a.trend}%`)
+    const comm = (data?.commercial?.areas || []).map((a) => {
+      const r = a.rent || {}
+      return `${a.en} | rent ${r.avg || 0} AED/yr | ${r.ppsf || 0} AED/sqft | ${r.n || 0} units | trend ${a.trend >= 0 ? '+' : ''}${a.trend}%`
+    })
+    return [
+      `When the user says "these", "it", "that", or "them", they mean the most recent thing discussed in the conversation — resolve it from the chat history, NOT from a default. Only if a question has no prior context, assume the ${isCommercial ? 'COMMERCIAL UNITS' : 'LAND'} section. Use whichever dataset below fits.`,
+      '',
+      'LAND PLOTS (annual rent = land sale value × 5–8% yield, default 6.5%):',
+      land.join('\n') || '(none)',
+      '',
+      'COMMERCIAL UNITS (real annual MARKET RENT; types: office, shop, warehouse, showroom, building, villa, floor, labour accommodation, factory):',
+      comm.join('\n') || '(none)',
+    ].join('\n')
   }
 
   const send = async (text) => {
     const q = (text ?? input).trim()
     if (!q) return
     setInput('')
-    // listing-browse intent → instant carousel of real listings (deterministic, with live ad links)
+    setChips(nextChips(q)) // chips follow the conversation
+    // short conversation memory (prior turns) for multi-turn context
+    const history = (msgs || []).filter((m) => !m.pending).slice(-8).map((m) => ({
+      role: m.role === 'user' ? 'user' : 'model',
+      text: m.text || m.title || m.card?.title || m.card?.area || '',
+    })).filter((h) => h.text)
+
+    // listing-browse intent → written intro + scrollable carousel of real listings
     const lc = listingQuery(q)
     if (lc) {
-      setMsgs((m) => [...m, { role: 'user', text: q }, { role: 'bot', ...lc }])
-      speak(lc.title || lc.text || '')
+      if (lc.cards) {
+        setMsgs((m) => [...m, { role: 'user', text: q }, { role: 'bot', text: lc.intro }, { role: 'bot', cards: lc.cards, comm: lc.comm, title: lc.title, sub: lc.sub }])
+        speak(lc.intro)
+      } else {
+        setMsgs((m) => [...m, { role: 'user', text: q }, { role: 'bot', text: lc.text }])
+        speak(lc.text)
+      }
       return
     }
     setMsgs((m) => [...m, { role: 'user', text: q }, { role: 'bot', text: t.asstThinking, pending: true }])
     let final
     try {
-      const ans = await askGemini({ question: q, context: buildContext(), lang }) // real Gemini AI
+      const ans = await askGemini({ question: q, context: buildContext(), lang, history }) // Gemini with memory
       final = { role: 'bot', text: ans }
     } catch {
       final = { role: 'bot', ...answer(q) } // no key / offline → instant data cards
@@ -364,13 +429,7 @@ export default function Assistant() {
         ))}
       </div>
       <div className="suggs">
-        {(isCommercial
-          ? [lang === 'ar' ? 'أرخص منطقة للمكاتب' : 'Cheapest area for offices',
-             lang === 'ar' ? 'إيجارات المستودعات في الجرف' : 'Warehouse rents in Al Jurf',
-             lang === 'ar' ? 'قارن المحلات بين المناطق' : 'Compare shops across areas',
-             lang === 'ar' ? 'أعلى الإيجارات التجارية' : 'Highest commercial rents']
-          : [t.sugg1, t.sugg2, t.sugg3, t.sugg4]
-        ).map((s, i) => <button className="sugg" key={i} onClick={() => send(s)}>{s}</button>)}
+        {(chips.length ? chips : defaultChips()).map((s, i) => <button className="sugg" key={i} onClick={() => send(s)}>{s}</button>)}
       </div>
       <div className="asst-input">
         <button className={'mic-btn' + (listening ? ' listening' : '')} onClick={mic} title="Speak"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8" /></svg></button>
