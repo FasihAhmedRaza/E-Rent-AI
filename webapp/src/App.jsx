@@ -15,6 +15,8 @@ import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import Profile from './pages/Profile'
 import { AuthProvider, useAuth } from './lib/auth'
+import { AssistantProvider } from './lib/assistant'
+import ChatWidget from './components/ChatWidget'
 
 const WITH_FILTER = ['/', '/map', '/listings', '/trends']
 
@@ -27,7 +29,7 @@ function Shell() {
       <Sidebar />
       <div className="main">
         <Topbar />
-        <div className="content">
+        <div className={'content' + (pathname === '/assistant' ? ' flush' : '')}>
           {!data ? (
             <div style={{ padding: 60, textAlign: 'center', color: 'var(--muted)' }}>Loading Ajman land data…</div>
           ) : data.error ? (
@@ -50,6 +52,7 @@ function Shell() {
           )}
         </div>
       </div>
+      <ChatWidget />
     </div>
   )
 }
@@ -62,7 +65,7 @@ function Gate() {
   )
   if (recovery) return <ResetPassword />
   if (!session) return <Login />
-  return <StoreProvider><Shell /></StoreProvider>
+  return <StoreProvider><AssistantProvider><Shell /></AssistantProvider></StoreProvider>
 }
 
 export default function App() {
