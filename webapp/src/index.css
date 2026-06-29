@@ -507,6 +507,35 @@ tbody tr:last-child td{border-bottom:none}
 .auth-switch button{color:var(--pine);font-weight:700;text-decoration:underline}
 .auth-mini{font-size:.74rem;color:var(--pine);font-weight:700;text-decoration:underline}
 .auth-mini:hover{color:var(--gold2)}
+/* premium split sign-in */
+.auth-split{display:grid;grid-template-columns:1.04fr .96fr;min-height:100vh;background:#fff}
+.auth-hero{position:relative;overflow:hidden;color:#fff;padding:clamp(30px,4vw,62px);display:flex;flex-direction:column;justify-content:space-between;gap:30px;background:linear-gradient(150deg,#0B4A45,#0A413C 55%,#062B28)}
+.auth-hero .auth-aurora{z-index:0}
+.ah-top,.ah-mid,.ah-stats{position:relative;z-index:1}
+.ah-top{display:flex;align-items:center;gap:13px}
+.ah-top h1{font-family:"Tajawal";font-weight:800;font-size:1.2rem;color:#fff;line-height:1.2}
+.ah-top p{font-size:.76rem;color:#bfe0d9;font-weight:600}
+.ah-mid{max-width:540px}
+.ah-mid h2{font-family:"Tajawal";font-weight:800;font-size:clamp(1.7rem,2.7vw,2.5rem);line-height:1.18;margin-bottom:18px}
+.ah-mid>p{color:#cfe3df;font-size:1.02rem;line-height:1.75;margin-bottom:28px;max-width:480px}
+.ah-feats{display:flex;flex-direction:column;gap:14px}
+.ah-feats li{display:flex;align-items:center;gap:12px;font-size:.96rem;color:#eaf4f1;font-weight:600}
+.ah-feats svg{width:21px;height:21px;color:var(--gold);flex:none}
+.ah-stats{display:flex;gap:clamp(20px,3vw,40px);border-top:1px solid rgba(255,255,255,.14);padding-top:24px}
+.ah-stats b{display:block;font-family:"Tajawal";font-weight:800;font-size:1.55rem;color:#fff}
+.ah-stats span{font-size:.74rem;color:#a9cdc6;font-weight:600}
+.auth-panel{display:flex;align-items:center;justify-content:center;padding:clamp(24px,4vw,52px)}
+.auth-form{width:100%;max-width:384px;display:flex;flex-direction:column}
+.ap-brand{display:none;align-items:center;gap:12px;margin-bottom:24px}
+.ap-brand h1{font-family:"Tajawal";font-weight:800;font-size:1.05rem;color:var(--pine);line-height:1.2}
+.ap-brand p{font-size:.72rem;color:var(--muted);font-weight:600}
+.auth-foot{margin-top:22px;font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:7px;font-weight:600}
+.auth-foot svg{width:14px;height:14px;flex:none}
+@media (max-width:880px){
+  .auth-split{grid-template-columns:1fr}
+  .auth-hero{display:none}
+  .ap-brand{display:flex}
+}
 
 /* links never underline (router nav uses <a>) */
 a{color:inherit;text-decoration:none}
