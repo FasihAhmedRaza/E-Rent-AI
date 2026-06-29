@@ -25,14 +25,16 @@ export async function geminiAnswer({ question, context, lang, history, key, mode
   }
   contents.push({ role: 'user', parts: [{ text: question }] })
 
-  const mdl = model || 'gemini-2.5-flash'
+  const mdl = model || 'gemini-2.0-flash' // higher free-tier limit than 2.5-flash
+  const gen = { temperature: 0.5, maxOutputTokens: 1024 }
+  if (/gemini-(2\.5|3)/.test(mdl)) gen.thinkingConfig = { thinkingBudget: 0 } // only 2.5/3 support thinking
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${mdl}:generateContent?key=${key}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       system_instruction: { parts: [{ text: system }] },
       contents,
-      generationConfig: { temperature: 0.5, maxOutputTokens: 1024, thinkingConfig: { thinkingBudget: 0 } },
+      generationConfig: gen,
     }),
   })
   const j = await r.json()

@@ -300,15 +300,11 @@ export function AssistantProvider({ children }) {
       try { recog.current && recog.current.stop() } catch (e) { /* ignore */ }
     }
     const onVis = () => { if (document.hidden) onHide() }
-    window.addEventListener('beforeunload', onHide)
-    window.addEventListener('pagehide', onHide)
-    window.addEventListener('unload', onHide)
+    window.addEventListener('pagehide', onHide) // pagehide covers refresh/close (unload is blocked by Permissions-Policy)
     document.addEventListener('visibilitychange', onVis)
     return () => {
       onHide()
-      window.removeEventListener('beforeunload', onHide)
       window.removeEventListener('pagehide', onHide)
-      window.removeEventListener('unload', onHide)
       document.removeEventListener('visibilitychange', onVis)
     }
   }, [])
