@@ -628,6 +628,16 @@ tbody tr:hover .view-link{color:var(--pine);text-decoration:underline}
 .ac-lname{font-weight:700;font-size:.88rem;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ac-lrent{font-family:"Tajawal";font-weight:800;color:var(--pine);white-space:nowrap}
 
+/* premium branded loading spinner */
+.loader{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;min-height:60vh;padding:40px}
+.loader-orb{position:relative;width:62px;height:62px;display:grid;place-items:center;border-radius:17px;background:linear-gradient(150deg,#0E5249,#072F2C);border:1px solid rgba(194,152,47,.4);box-shadow:0 14px 34px -14px rgba(11,74,69,.6)}
+.loader-orb svg{width:28px;height:28px;color:var(--gold);animation:ldrpulse 1.6s ease-in-out infinite}
+.loader-orb::before{content:"";position:absolute;inset:-7px;border-radius:23px;border:2.5px solid transparent;border-top-color:var(--gold);border-right-color:var(--teal);animation:ldrspin .9s linear infinite}
+.loader-txt{font-size:.85rem;color:var(--muted);font-weight:700;letter-spacing:.2px}
+.loader.dark .loader-txt{color:#cfe3df}
+@keyframes ldrspin{to{transform:rotate(360deg)}}
+@keyframes ldrpulse{0%,100%{opacity:.6}50%{opacity:1}}
+
 /* "how this is calculated" methodology note (shown on each data view) */
 .basis-note{display:flex;align-items:flex-start;gap:8px;font-size:.78rem;color:var(--muted);font-weight:600;background:var(--tint);border:1px solid #D3E3DD;border-radius:11px;padding:9px 13px;margin-bottom:14px;line-height:1.5}
 .basis-note svg{width:15px;height:15px;color:var(--teal);flex:none;margin-top:1px}

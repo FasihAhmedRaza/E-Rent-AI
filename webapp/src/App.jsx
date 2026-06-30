@@ -17,6 +17,7 @@ import Profile from './pages/Profile'
 import { AuthProvider, useAuth } from './lib/auth'
 import { AssistantProvider } from './lib/assistant'
 import ChatWidget from './components/ChatWidget'
+import Loader from './components/Loader'
 
 const WITH_FILTER = ['/', '/map', '/listings', '/trends']
 
@@ -31,9 +32,9 @@ function Shell() {
         <Topbar />
         <div className={'content' + (pathname === '/assistant' ? ' flush' : '')}>
           {!data ? (
-            <div style={{ padding: 60, textAlign: 'center', color: 'var(--muted)' }}>Loading Ajman land data…</div>
+            <Loader label={lang === 'ar' ? 'جارٍ تحميل بيانات عجمان…' : 'Loading Ajman data…'} />
           ) : data.error ? (
-            <div style={{ padding: 60, textAlign: 'center', color: 'var(--muted)' }}>Could not load data.</div>
+            <div style={{ padding: 60, textAlign: 'center', color: 'var(--muted)' }}>{lang === 'ar' ? 'تعذّر تحميل البيانات.' : 'Could not load data.'}</div>
           ) : (
             <>
               {WITH_FILTER.includes(pathname) && <FilterBar />}
@@ -61,7 +62,7 @@ function Gate() {
   const { session, loading, recovery } = useAuth()
   if (loading) return (
     <div className="auth-wrap"><div className="auth-aurora" />
-      <div style={{ color: '#cfe3df', fontWeight: 700, position: 'relative' }}>Loading…</div></div>
+      <div style={{ position: 'relative', zIndex: 1 }}><Loader dark label="Loading…" /></div></div>
   )
   if (recovery) return <ResetPassword />
   if (!session) return <Login />
