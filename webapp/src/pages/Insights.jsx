@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useStore, areaAvgRent } from '../lib/store'
 import { T } from '../lib/i18n'
 import { fmt } from '../lib/format'
+import BasisNote from '../components/BasisNote'
 
 // exec-card icons (mirror the prototype's execIcon())
 const EXEC_ICONS = {
@@ -162,6 +163,7 @@ export default function Insights() {
 
   return (
     <section className="view" id="v-insights">
+      <BasisNote />
       {/* 1) Exec stat cards */}
       <div className="exec-grid" id="execStats">
         {exec && exec.map((c, i) => (
@@ -186,7 +188,7 @@ export default function Insights() {
           </svg>
           <span>{t.oppTitle}</span>
         </div>
-        <p className="sec-s">{t.oppSub}</p>
+        <p className="sec-s">{isCommercial ? t.oppSubC : t.oppSub}</p>
         <div id="oppChart">
           {opp && (
             <div className="opp-wrap" ref={wrapRef}>

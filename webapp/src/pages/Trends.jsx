@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useStore, statsFor, areaAvgRent } from '../lib/store'
 import { T, TYPES, TYPES_COMMERCIAL } from '../lib/i18n'
 import { fmt } from '../lib/format'
+import BasisNote from '../components/BasisNote'
 
 // deterministic pseudo-noise (mirrors the prototype's seeded())
 const seeded = (s) => {
@@ -112,6 +113,7 @@ export default function Trends() {
 
   return (
     <>
+      <BasisNote />
       <div className="grid g-main">
         <div className="card chart-card">
           <div className="sec-h">

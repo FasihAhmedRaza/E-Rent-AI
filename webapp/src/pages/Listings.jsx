@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../lib/store'
 import { T, TYPES, TYPES_COMMERCIAL } from '../lib/i18n'
 import { fmt, money } from '../lib/format'
+import BasisNote from '../components/BasisNote'
 
 const SRC_CLASS = { bayut: 'bayut', dubizzle: 'dub', propertyfinder: 'pf' }
 const SRC_NAME = { bayut: 'Bayut', dubizzle: 'Dubizzle', propertyfinder: 'Property Finder' }
@@ -58,6 +59,7 @@ export default function Listings() {
 
   return (
     <>
+      <BasisNote />
       <div className="tbl-tools">
         <div className="pills">
           <button className={'pill-f' + (type === 'all' ? ' active' : '')} onClick={() => setType('all')}>{t.allTypes}</button>
