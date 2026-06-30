@@ -24,7 +24,7 @@ export default function Overview() {
   const kpis = [
     { l: t.kLow, v: money(s.low), f: t.kLowF, cur: t.cur },
     { l: isCommercial ? t.kAvgC : t.kAvg, v: money(s.avg), f: `${fmt(s.ppsf)} ${t.cur}/${t.sqft} · ${isCommercial ? t.kAvgFC : t.kAvgF}`, gold: true, cur: t.cur },
-    { l: t.kHigh, v: money(s.high), f: t.kHighF, cur: t.cur },
+    { l: t.kHigh, v: money(s.high), f: isCommercial ? t.kHighFC : t.kHighF, cur: t.cur },
     { l: t.kTrend, trend: s.trend, f: basisNote.split('·')[0] },
   ]
 
@@ -88,13 +88,13 @@ export default function Overview() {
 
         <div className="card ai" style={{ padding: 22 }}>
           <div className="sec-h"><span className="lhs"><span className="spark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9z" /></svg></span>{t.aiTitle}</span></div>
-          <p className="sec-s">{t.aiSub}</p>
+          <p className="sec-s">{isCommercial ? t.aiSubC : t.aiSub}</p>
           <p className="ai-body">
             {nm(a)} {lang === 'ar' ? 'متوسط إيجارها' : 'averages'} <b className="num">{t.cur} {money(s.avg)}</b>/{lang === 'ar' ? 'سنة' : 'yr'} {lang === 'ar' ? 'عبر' : 'across'} <b className="num">{fmt(s.n)}</b> {unitWord} ({fmt(s.ppsf)} {t.cur}/{t.sqft}).
           </p>
           <ul className="ai-list">
-            <li><span className="tk" />{t.bestValueA}<b>{nm(cheapest.x)}</b> — {t.cur} {money(cheapest.rent)}{t.bestValueB}</li>
-            <li><span className="tk" />{t.demandNear}<b>{nm(priciest.x)}</b> ({fmt(priciest.x.ppsf)} {t.cur}/{t.sqft})</li>
+            <li><span className="tk" />{isCommercial ? t.bestValueAC : t.bestValueA}<b>{nm(cheapest.x)}</b> · {t.cur} {money(cheapest.rent)}{t.bestValueB}</li>
+            <li><span className="tk" />{isCommercial ? t.demandNearC : t.demandNear}<b>{nm(priciest.x)}</b> ({fmt(priciest.x.ppsf)} {t.cur}/{t.sqft})</li>
             <li><span className="tk" />{basisNote}</li>
           </ul>
         </div>
