@@ -23,7 +23,7 @@ export const TYPES_COMMERCIAL = {
 
 export const T = {
   en: {
-    dir: 'ltr', brand: 'E‑Rent AI', brandSub: 'Ajman · Land Intelligence', navLabel: 'Sections',
+    dir: 'ltr', brand: 'Intelligent Valuation AI', brandSub: 'Ajman · Land Intelligence', navLabel: 'Sections',
     navOverview: 'Overview', navMap: 'Map', navListings: 'Listings', navTrends: 'Trends',
     navInsights: 'Insights', navAsst: 'AI Assistant', navStudio: 'AI Studio', internal: 'Internal · Live data',
     userName: 'Ahmed Al Nuaimi', userRole: 'Land Management Dept.', avatar: 'AA', searchPh: 'Search listings…',
@@ -84,7 +84,7 @@ export const T = {
     miListings: 'Sale listings', showListings: 'View listings', perSqftL: 'Price/sqft',
   },
   ar: {
-    dir: 'rtl', brand: 'E‑Rent AI', brandSub: 'عجمان · ذكاء الأراضي', navLabel: 'الأقسام',
+    dir: 'rtl', brand: 'Intelligent Valuation AI', brandSub: 'عجمان · ذكاء الأراضي', navLabel: 'الأقسام',
     navOverview: 'نظرة عامة', navMap: 'الخريطة', navListings: 'العروض', navTrends: 'المؤشرات',
     navInsights: 'تحليلات', navAsst: 'المساعد', navStudio: 'أدوات ذكية', internal: 'داخلي · بيانات مباشرة',
     userName: 'أحمد النعيمي', userRole: 'قسم إدارة الأراضي', avatar: 'أ ن', searchPh: 'ابحث…',

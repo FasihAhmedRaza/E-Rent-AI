@@ -23,7 +23,7 @@ export default function ChatWidget() {
           <div className="cw-head">
             <div className="asst-orb sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a7 7 0 0 0-7 7v3a7 7 0 0 0 14 0V9a7 7 0 0 0-7-7z" /><path d="M9 13a3 3 0 0 0 6 0" /></svg></div>
             <div className="cw-id">
-              <b>{lang === 'ar' ? 'مساعد E‑Rent' : 'E‑Rent Assistant'}</b>
+              <b>{lang === 'ar' ? 'مساعد التقييم الذكي' : 'Valuation Assistant'}</b>
               <span className={listening || busy ? 'live' : ''}>{status}</span>
             </div>
             <button className="cw-ico" onClick={toFullPage} title={lang === 'ar' ? 'فتح الصفحة الكاملة' : 'Open full page'} type="button">

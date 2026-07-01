@@ -47,7 +47,7 @@ export default function Login() {
         <div className="auth-aurora" />
         <div className="ah-top">
           <div className="s-logo"><Logo /></div>
-          <div><h1>E‑Rent AI</h1><p>Ajman Land Intelligence</p></div>
+          <div><h1>Intelligent Valuation AI</h1><p>Ajman Land Intelligence</p></div>
         </div>
         <div className="ah-mid">
           <h2>Know the real value of every plot and unit in Ajman.</h2>
@@ -67,7 +67,7 @@ export default function Login() {
 
       <main className="auth-panel">
         <form className="auth-form" onSubmit={submit}>
-          <div className="ap-brand"><div className="s-logo"><Logo /></div><div><h1>E‑Rent AI</h1><p>Ajman Land Intelligence</p></div></div>
+          <div className="ap-brand"><div className="s-logo"><Logo /></div><div><h1>Intelligent Valuation AI</h1><p>Ajman Land Intelligence</p></div></div>
           <h2 className="auth-h">{title}</h2>
           <p className="auth-sub">{sub}</p>
 

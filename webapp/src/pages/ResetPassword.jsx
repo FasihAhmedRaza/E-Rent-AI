@@ -26,7 +26,7 @@ export default function ResetPassword() {
       <form className="auth-card" onSubmit={submit}>
         <div className="auth-brand">
           <div className="s-logo"><svg viewBox="0 0 24 24" fill="none" stroke="#F1E5C2" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V8l7-4 7 4v13M9 21v-5h6v5" /></svg></div>
-          <div><h1>E‑Rent AI</h1><p>Ajman Land Intelligence</p></div>
+          <div><h1>Intelligent Valuation AI</h1><p>Ajman Land Intelligence</p></div>
         </div>
         <h2 className="auth-h">Set a new password</h2>
         <p className="auth-sub">Choose a new password for your account.</p>

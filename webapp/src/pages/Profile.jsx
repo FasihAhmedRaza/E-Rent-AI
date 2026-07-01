@@ -35,7 +35,7 @@ export default function Profile() {
 
       <div className="card" style={{ padding: 22, marginBottom: 18 }}>
         <div className="sec-h">Signed in as</div>
-        <p className="sec-s">You are currently logged in to E‑Rent AI with this account.</p>
+        <p className="sec-s">You are currently logged in to Intelligent Valuation AI with this account.</p>
         <div className="mrow"><span className="l">Email</span><span className="v">{user?.email || '—'}</span></div>
         <div className="mrow"><span className="l">User ID</span><span className="v" style={{ fontFamily: 'monospace', fontSize: '.78rem' }}>{user?.id || '—'}</span></div>
         <div className="mrow"><span className="l">Last sign‑in</span><span className="v">{fmtDate(user?.last_sign_in_at)}</span></div>

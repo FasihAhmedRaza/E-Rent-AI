@@ -1,4 +1,4 @@
-// Premium branded loading spinner: the E-Rent mark inside a rotating gold/teal ring.
+// Premium branded loading spinner: the brand mark inside a rotating gold/teal ring.
 export default function Loader({ label, dark }) {
   return (
     <div className={'loader' + (dark ? ' dark' : '')}>
