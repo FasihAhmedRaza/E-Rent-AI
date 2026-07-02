@@ -66,11 +66,22 @@ AREAS: dict[str, dict] = {
     "zahia1":     {"en": "Al Zahia 1",          "ar": "الزاهية 1",
                    "aliases": ["Al Zahya", "Zahya"]},
     "zahia2":     {"en": "Al Zahia 2",          "ar": "الزاهية 2"},
-    "masfout":    {"en": "Masfout",             "ar": "مصفوت"},
+    "masfout":    {"en": "Masfout",             "ar": "مصفوت", "aliases": ["Masfoot"]},
     "manama":     {"en": "Al Manama",           "ar": "المنامة"},
+    # Additional real Ajman areas/developments the portals use heavily (beyond the core 47).
+    "albahia":    {"en": "Al Bahia",            "ar": "الباهية", "aliases": ["Al Bahia Hills", "Bahia"]},
+    "downtown":   {"en": "Ajman Downtown",      "ar": "وسط مدينة عجمان",
+                   "aliases": ["Downtown Ajman", "Horizon Tower", "Horizon Towers", "Falcon Tower", "Falcon Towers", "Conquer Tower", "City Tower", "Ajman One"]},
+    "corniche":   {"en": "Ajman Corniche",      "ar": "كورنيش عجمان",
+                   "aliases": ["Corniche Ajman", "Ajman Corniche Residence", "Ajman Corniche Residences", "Corniche Tower", "Corniche Road"]},
+    "bustan":     {"en": "Al Bustan",           "ar": "البستان"},
+    "emiratescity": {"en": "Emirates City",     "ar": "مدينة الإمارات",
+                     "aliases": ["Emirates Lake Towers", "Lavender Tower", "Paradise Lakes", "Ajman Pearl"]},
+    "uptown":     {"en": "Ajman Uptown",        "ar": "أب تاون عجمان", "aliases": ["Uptown Ajman"]},
+    "freezone":   {"en": "Ajman Free Zone",     "ar": "منطقة عجمان الحرة", "aliases": ["Free Zone"]},
 }
 
-assert len(AREAS) == 47, f"expected 47 areas, got {len(AREAS)}"
+assert len(AREAS) >= 47, f"expected at least 47 areas, got {len(AREAS)}"
 
 
 # --------------------------------------------------------------------------- #
