@@ -1,6 +1,7 @@
 import { useAssistant } from '../lib/assistant'
 import Conversation from '../components/Conversation'
 import ChatComposer from '../components/ChatComposer'
+import Mark from '../components/Mark'
 
 export default function Assistant() {
   const { t, lang, listening, busy, muted, toggleMute, clearChat, isCommercial } = useAssistant()
@@ -10,9 +11,7 @@ export default function Assistant() {
   return (
     <div className="card asst asst-page">
       <div className="asst-head">
-        <div className="asst-orb">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a7 7 0 0 0-7 7v3a7 7 0 0 0 14 0V9a7 7 0 0 0-7-7z" /><path d="M9 13a3 3 0 0 0 6 0" /></svg>
-        </div>
+        <div className="asst-orb"><Mark /></div>
         <div className="asst-id"><h3>{title}</h3><p>{t.asstSub}</p></div>
         <div className={'asst-status' + (listening || busy ? ' live' : '')}><i />{status}</div>
         <button className={'icon-btn' + (muted ? ' on' : '')} onClick={toggleMute} title={muted ? t.unmute : t.mute} type="button">

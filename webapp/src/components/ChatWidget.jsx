@@ -2,6 +2,7 @@ import { useLocation } from 'react-router-dom'
 import { useAssistant } from '../lib/assistant'
 import Conversation from './Conversation'
 import ChatComposer from './ChatComposer'
+import Mark from './Mark'
 
 export default function ChatWidget() {
   const { widgetOpen, setWidgetOpen, toFullPage, t, lang, listening, busy } = useAssistant()
@@ -21,7 +22,7 @@ export default function ChatWidget() {
       {widgetOpen && (
         <div className="chat-pop" dir={t.dir}>
           <div className="cw-head">
-            <div className="asst-orb sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a7 7 0 0 0-7 7v3a7 7 0 0 0 14 0V9a7 7 0 0 0-7-7z" /><path d="M9 13a3 3 0 0 0 6 0" /></svg></div>
+            <div className="asst-orb sm"><Mark /></div>
             <div className="cw-id">
               <b>{lang === 'ar' ? 'مساعد التقييم الذكي' : 'Valuation Assistant'}</b>
               <span className={listening || busy ? 'live' : ''}>{status}</span>

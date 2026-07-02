@@ -1,10 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../lib/auth'
 import PasswordField from '../components/PasswordField'
-
-const Logo = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="#F1E5C2" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V8l7-4 7 4v13M9 21v-5h6v5" /></svg>
-)
+import Mark from '../components/Mark'
 const Check = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.4 12 2.4 2.4 4.8-5.2" /></svg>
 )
@@ -45,10 +42,7 @@ export default function Login() {
     <div className="auth-split">
       <aside className="auth-hero">
         <div className="auth-aurora" />
-        <div className="ah-top">
-          <div className="s-logo"><Logo /></div>
-          <div><h1>Intelligent Valuation AI</h1><p>Ajman Land Intelligence</p></div>
-        </div>
+        <img className="ah-logo" src="/logos/iv-logo-on-dark-transparent.svg" alt="Intelligent Valuation AI" />
         <div className="ah-mid">
           <h2>Know the real value of every plot and unit in Ajman.</h2>
           <p>Live rent and sale data from Bayut, Dubizzle and Property Finder, across all 47 Ajman districts, turned into one clear valuation.</p>
@@ -67,7 +61,7 @@ export default function Login() {
 
       <main className="auth-panel">
         <form className="auth-form" onSubmit={submit}>
-          <div className="ap-brand"><div className="s-logo"><Logo /></div><div><h1>Intelligent Valuation AI</h1><p>Ajman Land Intelligence</p></div></div>
+          <div className="ap-brand"><div className="s-logo"><Mark /></div><div><h1>Intelligent Valuation AI</h1><p>Ajman Land Intelligence</p></div></div>
           <h2 className="auth-h">{title}</h2>
           <p className="auth-sub">{sub}</p>
 

@@ -23,6 +23,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 .s-logo svg{width:22px;height:22px}
 .s-brand h1{font-family:"Tajawal";font-size:.98rem;font-weight:800;color:#fff;line-height:1.25}
 .s-brand p{font-size:.68rem;color:#8FB3AD;font-weight:500}
+.s-brand-logo{width:100%;max-width:196px;height:auto;display:block}
+.ah-logo{position:relative;z-index:1;width:min(400px,80%);height:auto;display:block}
 .nav{display:flex;flex-direction:column;gap:4px;position:relative;z-index:1;margin-top:6px}
 .nav-label{font-size:.66rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#6E9690;padding:8px 12px 6px}
 .nav-item{display:flex;align-items:center;gap:13px;padding:12px 14px;border-radius:12px;color:#B6CFC9;font-weight:600;font-size:.9rem;transition:.18s;position:relative;width:100%;text-align:start}

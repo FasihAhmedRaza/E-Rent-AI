@@ -25,8 +25,7 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="s-brand">
-        <div className="s-logo"><svg viewBox="0 0 24 24" fill="none" stroke="#F1E5C2" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V8l7-4 7 4v13M9 21v-5h6v5" /></svg></div>
-        <div><h1>{t.brand}</h1><p>{t.brandSub}</p></div>
+        <img className="s-brand-logo" src="/logos/iv-logo-on-dark-transparent.svg" alt={t.brand} />
       </div>
       <nav className="nav">
         <span className="nav-label">{t.navLabel}</span>
