@@ -111,6 +111,13 @@ export default function Trends() {
     return { top, max, min }
   }, [areas, type, yld, a.key, lang])
 
+  if (!s || !s.n) return (
+    <div className="card" style={{ padding: '48px 30px', textAlign: 'center' }}>
+      <h2 style={{ margin: '2px 0 10px' }}>{nm(a)}</h2>
+      <p className="sec-s">{lang === 'ar' ? 'لا توجد بيانات إيجار بعد لهذه المنطقة. اختر منطقة أخرى أو عد لاحقاً.' : 'No rent data yet for this area. Pick another area or check back later.'}</p>
+    </div>
+  )
+
   return (
     <>
       <BasisNote />

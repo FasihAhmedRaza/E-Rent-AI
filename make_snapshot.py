@@ -111,9 +111,16 @@ def build_land(rows, coords):
         by_area[l["area"]].append(l)
 
     areas = []
-    for ak, ls in by_area.items():
+    for ak in AREA_NAMES:  # emit ALL 47 areas so every area is selectable (empty ones flagged n=0)
+        ls = by_area.get(ak, [])
         m = META.get(ak, [25.4, 55.5, 0, 0])
         ll = coords.get(ak) or [m[0], m[1]]
+        base = {"key": ak, "en": AREA_NAMES[ak]["en"], "ar": AREA_NAMES[ak]["ar"],
+                "ll": ll, "trend": m[2], "coast": bool(m[3])}
+        if not ls:
+            areas.append({**base, "ppsf": None, "n": 0, "vlow": None, "vavg": None,
+                          "vhigh": None, "bytype": {}, "sources": {}})
+            continue
         bytype = {}
         for t in ("commercial", "industrial", "residential", "mixed"):
             tl = [x for x in ls if x["type"] == t]
@@ -122,18 +129,14 @@ def build_land(rows, coords):
                 bytype[t] = {"n": len(tl), "ppsf": med([x["ppsf"] for x in tl]),
                              "vlow": vals[0], "vavg": med(vals), "vhigh": vals[-1]}
         vals = sorted(x["value"] for x in ls)
-        areas.append({
-            "key": ak, "en": AREA_NAMES.get(ak, {}).get("en", ak), "ar": AREA_NAMES.get(ak, {}).get("ar", ""),
-            "ll": ll, "trend": m[2], "coast": bool(m[3]),
-            "ppsf": med([x["ppsf"] for x in ls]), "n": len(ls),
-            "vlow": vals[0], "vavg": med(vals), "vhigh": vals[-1], "bytype": bytype,
-            "sources": {s: med([x["ppsf"] for x in ls if x["src"] == s]) for s in SOURCES},
-        })
+        areas.append({**base, "ppsf": med([x["ppsf"] for x in ls]), "n": len(ls),
+                      "vlow": vals[0], "vavg": med(vals), "vhigh": vals[-1], "bytype": bytype,
+                      "sources": {s: med([x["ppsf"] for x in ls if x["src"] == s]) for s in SOURCES}})
     areas.sort(key=lambda a: -a["n"])
 
     allppsf = sorted(x["ppsf"] for x in sale)
     kpis = {
-        "total_listings": len(listings), "sale": len(sale), "areas": len(areas),
+        "total_listings": len(listings), "sale": len(sale), "areas": sum(1 for a in areas if a["n"]),
         "median_ppsf": med(allppsf), "p10": allppsf[len(allppsf)//10] if allppsf else None,
         "p90": allppsf[9*len(allppsf)//10] if allppsf else None,
         "by_source": {s: sum(1 for l in listings if l["src"] == s) for s in SOURCES},
@@ -170,9 +173,12 @@ def build_commercial(rows, coords):
         by_area[it["area"]].append(it)
 
     areas = []
-    for ak, ls in by_area.items():
+    for ak in AREA_NAMES:  # emit ALL 47 areas (empty ones flagged rent/sale None)
+        ls = by_area.get(ak, [])
         m = META.get(ak, [25.4, 55.5, 0, 0])
         ll = coords.get(ak) or [m[0], m[1]]
+        base = {"key": ak, "en": AREA_NAMES[ak]["en"], "ar": AREA_NAMES[ak]["ar"],
+                "ll": ll, "trend": m[2], "coast": bool(m[3])}
         rent_items = [x for x in ls if x["lt"] == "rent" and x["value"] and x["ppsf"]]
         sale_items = [x for x in ls if x["lt"] == "sale" and x["value"] and x["ppsf"]]
         bytype = {}
@@ -183,20 +189,17 @@ def build_commercial(rows, coords):
                 bytype[st] = {"rent": rb, "sale": sb_}
         rent, sale = vstats(rent_items), vstats(sale_items)
         if not rent and not sale:
+            areas.append({**base, "rent": None, "sale": None, "bytype": {}, "sources": {}})
             continue
-        areas.append({
-            "key": ak, "en": AREA_NAMES.get(ak, {}).get("en", ak), "ar": AREA_NAMES.get(ak, {}).get("ar", ""),
-            "ll": ll, "trend": m[2], "coast": bool(m[3]),
-            "rent": rent, "sale": sale, "bytype": bytype,
-            "sources": {s: med([x["ppsf"] for x in rent_items if x["src"] == s]) for s in SOURCES},
-        })
-    areas.sort(key=lambda a: -((a["rent"] or {}).get("n", 0) + (a["sale"] or {}).get("n", 0)))
+        areas.append({**base, "rent": rent, "sale": sale, "bytype": bytype,
+                      "sources": {s: med([x["ppsf"] for x in rent_items if x["src"] == s]) for s in SOURCES}})
+    areas.sort(key=lambda a: -(((a["rent"] or {}).get("n", 0)) + ((a["sale"] or {}).get("n", 0))))
 
     rent_ppsf_all = sorted(x["ppsf"] for x in items if x["lt"] == "rent" and x["ppsf"])
     kpis = {
         "rent_listings": sum(1 for x in items if x["lt"] == "rent"),
         "sale_listings": sum(1 for x in items if x["lt"] == "sale"),
-        "areas": len(areas),
+        "areas": sum(1 for a in areas if a["rent"] or a["sale"]),
         "median_rent_ppsf": med(rent_ppsf_all),
         "by_source": {s: sum(1 for x in items if x["src"] == s) for s in SOURCES},
         "by_type": {st: sum(1 for x in items if x["subtype"] == st) for st in UNIT_SUBTYPES

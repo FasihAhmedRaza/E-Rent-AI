@@ -93,5 +93,8 @@ export function statsFor(a, type, yld) {
 
 export const areaAvgRent = (a, type, yld) => {
   const b = baseFor(a, type)
-  return b ? b.vavg * yld : 0
+  return b && b.vavg != null ? b.vavg * yld : 0
 }
+
+// true if the area has any real listings (land: sale count; commercial: rent or sale count)
+export const areaHasData = (a) => !!(a && (a.n || (a.saleStats && a.saleStats.n)))

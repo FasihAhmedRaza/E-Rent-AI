@@ -1,4 +1,4 @@
-import { useStore } from '../lib/store'
+import { useStore, areaHasData } from '../lib/store'
 import { T, TYPES, TYPES_COMMERCIAL } from '../lib/i18n'
 
 export default function FilterBar() {
@@ -28,7 +28,11 @@ export default function FilterBar() {
         <label>{t.areaLbl}</label>
         <div className="sel">
           <select value={area || ''} onChange={(e) => setArea(e.target.value)}>
-            {areas.map((a) => <option key={a.key} value={a.key}>{lang === 'ar' ? a.ar : a.en}</option>)}
+            {areas.map((a) => {
+              const label = lang === 'ar' ? a.ar : a.en
+              const empty = !areaHasData(a)
+              return <option key={a.key} value={a.key}>{label}{empty ? (lang === 'ar' ? ' · لا بيانات بعد' : ' · no data yet') : ''}</option>
+            })}
           </select>
         </div>
       </div>

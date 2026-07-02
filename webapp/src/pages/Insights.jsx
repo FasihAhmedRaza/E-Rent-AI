@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { useStore, areaAvgRent } from '../lib/store'
+import { useStore, areaAvgRent, areaHasData } from '../lib/store'
 import { T } from '../lib/i18n'
 import { fmt } from '../lib/format'
 import BasisNote from '../components/BasisNote'
@@ -24,8 +24,10 @@ const UpArrow = () => (
 )
 
 export default function Insights() {
-  const { data, areas, listings, kpis, lang, yld, area, setArea, isCommercial } = useStore()
+  const { data, areas: allAreas, listings, kpis, lang, yld, area, setArea, isCommercial } = useStore()
   const t = T[lang]
+  // Insights has no area picker of its own, so only ever chart areas that have real data
+  const areas = useMemo(() => allAreas.filter(areaHasData), [allAreas])
   const rtl = lang === 'ar'
   const [tip, setTip] = useState(null) // {x,y,name,rent,trend,ppsf}
   const wrapRef = useRef(null)

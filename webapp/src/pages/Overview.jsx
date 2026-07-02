@@ -5,10 +5,19 @@ import { fmt, money } from '../lib/format'
 export default function Overview() {
   const { areas, lang, area, type, setArea, yld, isCommercial } = useStore()
   const t = T[lang]
-  const a = areas.find((x) => x.key === area) || areas[0]
-  const s = statsFor(a, type, yld)
-  if (!s) return null
   const nm = (x) => (lang === 'ar' ? x.ar : x.en)
+  const a = areas.find((x) => x.key === area) || areas[0]
+  if (!a) return null
+  const s = statsFor(a, type, yld)
+  if (!s || !s.n) return (
+    <div className="card" style={{ padding: '48px 30px', textAlign: 'center' }}>
+      <div className="eyebrow">{isCommercial ? t.rangeEyebrowC : t.rangeEyebrow}</div>
+      <h2 style={{ margin: '6px 0 10px' }}>{nm(a)}</h2>
+      <p className="sec-s">{lang === 'ar'
+        ? 'لا توجد عروض بعد لهذه المنطقة. تظهر الأرقام تلقائياً عند رصد عروض جديدة من Bayut وDubizzle وProperty Finder.'
+        : 'No listings yet for this area. Numbers appear automatically as new listings are found on Bayut, Dubizzle and Property Finder.'}</p>
+    </div>
+  )
   const typeMap = isCommercial ? TYPES_COMMERCIAL : TYPES
   const typeName = type === 'all' ? t.allTypes : (typeMap[type]?.[lang] || t.allTypes)
   const basisNote = isCommercial ? t.marketRentNote : t.officialData
