@@ -270,34 +270,28 @@ export default function Insights() {
         </div>
         <div id="cmpOut">
           {selKeys.length > 0 && (
-            <div className="cmp-tbl-wrap">
-              <table className="cmp-tbl">
-                <thead>
-                  <tr>
-                    <th></th>
-                    {selKeys.map((k) => <th key={k}>{nameOf(byKey[k])}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {cmpRows.map((row, ri) => {
-                    let bestK = null, bestV = -Infinity
-                    if (row.best(selKeys[0]) !== null) {
-                      selKeys.forEach((k) => {
-                        const v = row.best(k)
-                        if (v != null && v > bestV) { bestV = v; bestK = k }
-                      })
-                    }
-                    return (
-                      <tr key={ri}>
-                        <td className="cmp-l">{row.l}</td>
-                        {selKeys.map((k) => (
-                          <td key={k} className={k === bestK ? 'cmp-best' : ''}>{row.f(k)}</td>
-                        ))}
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+            <div className="cmp-grid2" style={{ '--cols': selKeys.length }}>
+              <div className="cmp-row cmp-head">
+                <span className="cmp-l" />
+                {selKeys.map((k) => <span key={k} className="cmp-area">{nameOf(byKey[k])}</span>)}
+              </div>
+              {cmpRows.map((row, ri) => {
+                let bestK = null, bestV = -Infinity
+                if (row.best(selKeys[0]) !== null) {
+                  selKeys.forEach((k) => {
+                    const v = row.best(k)
+                    if (v != null && v > bestV) { bestV = v; bestK = k }
+                  })
+                }
+                return (
+                  <div className="cmp-row" key={ri}>
+                    <span className="cmp-l">{row.l}</span>
+                    {selKeys.map((k) => (
+                      <span key={k} className={'cmp-v' + (k === bestK ? ' cmp-best' : '')}>{row.f(k)}</span>
+                    ))}
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

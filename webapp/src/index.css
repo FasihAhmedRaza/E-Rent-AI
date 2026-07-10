@@ -471,14 +471,16 @@ tbody tr:last-child td{border-bottom:none}
 .opp-b{transition:.12s}
 .opp-b:hover circle{fill-opacity:.85;stroke:#0B4A45;stroke-width:2}
 .cmp-pick{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:6px 0 16px}
-.cmp-tbl-wrap{overflow-x:auto}
-.cmp-tbl{width:100%;border-collapse:collapse;font-size:.86rem;min-width:420px}
-.cmp-tbl th{text-align:center;font-family:"Tajawal";font-weight:800;color:var(--pine);padding:11px 12px;border-bottom:2px solid var(--line);font-size:.92rem}
-.cmp-tbl th:first-child{text-align:start}
-.cmp-tbl td{padding:11px 12px;text-align:center;border-bottom:1px solid var(--line2);font-family:"Tajawal";font-weight:700;color:var(--ink)}
-.cmp-l{text-align:start!important;color:var(--muted)!important;font-weight:600!important;font-family:inherit!important;font-size:.8rem}
-.cmp-best{background:rgba(31,158,110,.1);color:#0C7A52!important;position:relative}
-.cmp-best:after{content:"✓";position:absolute;top:3px;inset-inline-end:5px;font-size:.6rem;color:#1F9E6E}
+/* area comparison — CSS grid: every area column is an equal minmax(0,1fr) so none can collapse */
+.cmp-grid2{display:flex;flex-direction:column;border-top:1px solid var(--line2)}
+.cmp-row{display:grid;grid-template-columns:minmax(84px,1.25fr) repeat(var(--cols,3),minmax(0,1fr));align-items:center;border-bottom:1px solid var(--line2)}
+.cmp-row:last-child{border-bottom:none}
+.cmp-head{border-bottom:2px solid var(--line)}
+.cmp-l{padding:11px 8px;font-family:inherit;font-weight:600;color:var(--muted);font-size:.8rem}
+.cmp-area{padding:11px 6px;text-align:center;font-family:"Tajawal";font-weight:800;color:var(--pine);font-size:.9rem;line-height:1.2;word-break:break-word}
+.cmp-v{padding:11px 6px;text-align:center;font-family:"Tajawal";font-weight:700;color:var(--ink);font-size:.86rem;word-break:break-word}
+.cmp-best{background:rgba(31,158,110,.1);color:#0C7A52;border-radius:8px;position:relative}
+.cmp-best:after{content:"✓";position:absolute;top:2px;inset-inline-end:5px;font-size:.58rem;color:#1F9E6E}
 .roi-form{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin-top:4px}
 .roi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:14px}
 .roi-cell{background:var(--tint);border-radius:12px;padding:13px}
@@ -581,7 +583,11 @@ tbody tr:hover .view-link{color:var(--pine);text-decoration:underline}
   .hero-top{flex-direction:column;align-items:flex-start;gap:12px}
   .hero-rt{align-items:flex-start}
   .filterbar{gap:10px}
-  .filterbar .field{min-width:0;flex:1 1 44%}
+  .filterbar .field{min-width:0;flex:1 1 100%}
+  /* area comparison grid: tighter type/padding on phones so all columns stay readable */
+  .cmp-l{font-size:.74rem;padding:9px 5px}
+  .cmp-area{font-size:.78rem;padding:9px 4px}
+  .cmp-v{font-size:.75rem;padding:9px 4px}
   .pager{gap:10px;align-items:flex-start}
   .list-hint{font-size:.74rem}
 }
