@@ -13,7 +13,7 @@ day-to-day operation.
 | **Web app** | The dashboard (Overview, Map, Listings, Trends, Insights, AI Assistant, AI Studio) | Vercel — auto-deploys from GitHub `main` |
 | **Database** | All scraped listings (~9,000+) and the login accounts | Supabase |
 | **Scrapers** | Pull listings from Bayut, Dubizzle, Property Finder | Run on a normal Windows PC (this folder) |
-| **Data file** | `webapp/public/landData.json` — the snapshot the website reads | Built by `make_snapshot.py`, published via git |
+| **Data file** | `frontend/public/landData.json` — the snapshot the website reads | Built by `make_snapshot.py`, published via git |
 | **AI assistant** | Gemini-powered chat, grounded in the live data | Vercel serverless function `/api/ask` |
 
 **Valuation method (agreed with the client):**
@@ -37,8 +37,8 @@ day-to-day operation.
 
 ## 3. Secret files (NOT in GitHub — hand over separately)
 
-- **`.env`** (this folder) — `SUPABASE_URL`, `SUPABASE_KEY` (the `sb_secret_` writer key).
-- **`webapp/.env`** — the publishable Supabase key + `GEMINI_API_KEY` (only needed
+- **`.env`** (project root) — `SUPABASE_URL`, `SUPABASE_KEY` (the `sb_secret_` writer key).
+- **`frontend/.env`** — the publishable Supabase key + `GEMINI_API_KEY` (only needed
   for local development of the site; the live site takes these from Vercel).
 
 Share these via a password manager or in person. Whoever holds `SUPABASE_KEY` can
@@ -85,7 +85,7 @@ workflow.
 | Symptom | Meaning | Fix |
 |---|---|---|
 | Chrome opens and shows a puzzle/CAPTCHA | Bayut anti-bot check | Solve it in the window once; the run continues and remembers the session |
-| A portal logs `0 hits` on every page | The portal changed its website layout | A developer must update that portal's file in `scrapers/` (usually a 1–2 hour fix). This happens a few times per year — it is expected maintenance, not a defect |
+| A portal logs `0 hits` on every page | The portal changed its website layout | A developer must update that portal's file in `backend/scrapers/` (usually a 1–2 hour fix). This happens a few times per year — it is expected maintenance, not a defect |
 | `Target page, context or browser has been closed` at launch | Two scrapes tried to use the same Chrome profile at once | Wait for the other run to finish, or give the second run its own profile: `set SCRAPE_PROFILE_DIR=.pw-profile-2` |
 | `git push` rejected | The PC's GitHub login expired | Re-login with `git push` prompts, or refresh the stored credential in Windows Credential Manager |
 | Site shows old data after a refresh | Vercel deploy still running | Wait 1–2 minutes, hard-refresh (Ctrl+Shift+R) |
@@ -114,9 +114,10 @@ The app states this honestly rather than inventing numbers.
 ## 7. Useful commands (advanced)
 
 ```bash
+cd backend
 python run_scrape.py                       # scrape all 3 portals
 python run_scrape.py --portal bayut        # one portal only
 python run_scrape.py --portal propertyfinder --dry-run   # test without writing
-python make_snapshot.py                    # rebuild webapp/public/landData.json
-cd webapp && npm install && npm run dev    # run the website locally
+python make_snapshot.py                    # rebuild frontend/public/landData.json
+cd frontend && npm install && npm run dev    # run the website locally
 ```

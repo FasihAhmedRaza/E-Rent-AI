@@ -4,7 +4,7 @@ import { geminiAnswer } from './api/_gemini.js'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load ALL env vars (incl. non-VITE_ ones like GEMINI_API_KEY) from webapp/.env for use here.
+  // Load ALL env vars (incl. non-VITE_ ones like GEMINI_API_KEY) from frontend/.env for use here.
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
                 res.end(JSON.stringify(obj))
               }
               const key = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY
-              if (!key) return send(503, { error: 'AI not configured (add GEMINI_API_KEY to webapp/.env)' })
+              if (!key) return send(503, { error: 'AI not configured (add GEMINI_API_KEY to frontend/.env)' })
               try {
                 const { question, context, lang } = JSON.parse(body || '{}')
                 if (!question) return send(400, { error: 'No question' })

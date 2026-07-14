@@ -1,15 +1,15 @@
 """Regenerate the web app's data snapshot from Supabase.
 
-Run this AFTER scraping to refresh the dashboard:
+Run this AFTER scraping to refresh the dashboard (from the backend/ folder):
     python run_scrape.py        # scrape the 3 portals -> Supabase
-    python make_snapshot.py     # Supabase -> webapp/public/landData.json
+    python make_snapshot.py     # Supabase -> frontend/public/landData.json
 
-Output: webapp/public/landData.json with TWO views:
+Output: frontend/public/landData.json with TWO views:
   - LAND   (top-level areas/listings/kpis): rent is derived in the FRONTEND as
            sale value x yield (5-8%).
   - COMMERCIAL ("commercial" key): offices/shops/warehouses/... — uses scraped
            MARKET RENT directly (annualised), plus sale prices. NO yield.
-Reuses the geocoded coordinates in webapp/public/area_coords.json when present.
+Reuses the geocoded coordinates in frontend/public/area_coords.json when present.
 """
 from __future__ import annotations
 
@@ -21,8 +21,8 @@ from collections import defaultdict
 from db.client import get_client
 from scrapers.areas import AREAS as AREA_NAMES
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-PUB = os.path.join(HERE, "webapp", "public")
+HERE = os.path.dirname(os.path.abspath(__file__))          # backend/
+PUB = os.path.normpath(os.path.join(HERE, "..", "frontend", "public"))
 
 # per-area trend (%) + coast flag + fallback coordinate (used if not geocoded)
 META = {

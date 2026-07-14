@@ -33,6 +33,7 @@ echo  Data refresh started  %date% %time%
 echo ============================================================
 
 echo [1/3] Scraping the 3 portals (this takes 20-45 minutes)...
+cd /d "%~dp0backend"
 python run_scrape.py
 if errorlevel 1 echo   WARNING: a portal reported an error - continuing with whatever was saved.
 
@@ -41,7 +42,8 @@ python make_snapshot.py
 if errorlevel 1 goto :fail
 
 echo [3/3] Publishing to the live site...
-git add webapp/public/landData.json
+cd /d "%~dp0"
+git add frontend/public/landData.json
 git diff --cached --quiet
 if not errorlevel 1 (
   echo   No data changes to publish - site already up to date.

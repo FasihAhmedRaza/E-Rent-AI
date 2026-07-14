@@ -148,28 +148,28 @@ Keep it simple and reliable.
 
 ---
 
-## 8. Proposed project structure
+## 8. Project structure (current)
 
 ```
-ajman-platform/
-├── CLAUDE.md                  # this file
-├── .env.example               # template for secrets (commit this)
-├── .env                       # real secrets (DO NOT commit)
-├── .gitignore
-├── requirements.txt
-├── scrapers/
-│   ├── __init__.py
-│   ├── base.py                # BaseScraper: browser setup, delays, proxy, retry
-│   ├── bayut.py               # Bayut scraper
-│   ├── dubizzle.py            # Dubizzle scraper
-│   ├── propertyfinder.py      # Property Finder scraper
-│   ├── areas.py               # the 47 areas list + area-matching helper
-│   └── normalize.py           # clean/standardize a raw listing into our schema
-├── db/
-│   ├── schema.sql             # database tables
-│   └── client.py              # DB connection + upsert functions
-├── run_scrape.py              # entrypoint: scrape all portals → save to DB
-└── data/                      # local CSV dumps (gitignored)
+├── frontend/                  # the website (Vite + React) — Vercel Root Directory
+│   ├── src/                   # pages, components, lib
+│   ├── api/                   # serverless fn for the Gemini AI assistant
+│   └── public/                # static assets + landData.json (data snapshot)
+├── backend/                   # the data engine (Python)
+│   ├── scrapers/              # base.py, bayut.py, dubizzle.py, propertyfinder.py,
+│   │                          # areas.py (54 areas + matcher), normalize.py
+│   ├── db/                    # schema.sql + client.py (upsert on source_url)
+│   ├── run_scrape.py          # entrypoint: scrape all portals → Supabase
+│   ├── make_snapshot.py       # Supabase → frontend/public/landData.json
+│   └── requirements.txt
+├── docs/                      # HANDOVER.md + project guide PDF + prototype archive
+├── extras/password-reset-page/
+├── setup.bat                  # one-time PC setup
+├── scrape_and_publish.bat     # ONE CLICK: scrape → snapshot → git push (site updates)
+├── schedule_weekly.bat        # Windows scheduled task (Sundays 07:00)
+├── .github/workflows/         # weekly headless Property Finder refresh (free)
+├── .env                       # secrets (root; backend finds it via walk-up) — NOT committed
+└── data/                      # local logs/dumps (gitignored)
 ```
 
 ---

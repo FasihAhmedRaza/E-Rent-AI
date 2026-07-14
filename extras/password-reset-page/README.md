@@ -19,7 +19,7 @@ Set `APP_URL` (top of the `<script>`) to your **deployed E‑Rent AI app** URL s
 "Open E‑Rent AI →" buttons work. (`SUPABASE_URL` + anon key are already filled in.)
 
 ### 3. Point the app's reset link here
-In `webapp/.env` set:
+In `frontend/.env` set:
 ```
 VITE_RESET_REDIRECT_URL=https://erent-confirm.netlify.app
 ```

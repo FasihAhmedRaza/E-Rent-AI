@@ -1,50 +1,67 @@
-# E-Rent AI — Ajman Land Intelligence (Phase 1: Scrapers)
+# Intelligent Valuation AI
 
-Python + Playwright scrapers that pull **rent + sale** listings for **land** and
-**commercial units** across all 47 Ajman areas from **Bayut, Dubizzle, and
-Property Finder**, normalize them, and upsert into **Supabase**.
+Real estate valuation intelligence for Ajman (UAE). The platform scrapes live land
+and commercial listings from **Bayut, Dubizzle and Property Finder**, stores them in
+a database, and presents rents, prices, trends and AI insights in a bilingual
+(EN/AR) dashboard used by the Land Management Department.
 
-> Scope: this repo is **Phase 1 only** (scraping → DB). API (FastAPI) and the
-> Next.js UI come later. See [CLAUDE.md](CLAUDE.md) for the full plan.
+**Live site:** https://e-rent-ai.vercel.app
 
-## Project layout
+---
+
+## Project structure
+
 ```
-scrapers/
-  base.py          # Playwright browser, delays, proxy, retries, JSON helper
-  areas.py         # the 47 areas + messy-location -> area_key matcher
-  normalize.py     # clean fields -> `listings` schema
-  bayut.py         # (built after recon) Bayut scraper
-  dubizzle.py      # (later)
-  propertyfinder.py# (later)
-db/
-  schema.sql       # tables: areas, listings
-  client.py        # Supabase connection + idempotent upserts
-run_scrape.py      # entrypoint: run portals, report counts
-```
-
-## Setup
-```bash
-python -m venv .venv && .venv\Scripts\activate      # Windows
-pip install -r requirements.txt
-playwright install chromium
-
-cp .env.example .env        # then fill in SUPABASE_URL / SUPABASE_KEY
-```
-
-## Database
-1. Create the tables: run `db/schema.sql` in the Supabase SQL editor
-   (or `psql "$DATABASE_URL" -f db/schema.sql`).
-2. Seed the areas: `python run_scrape.py --seed-areas`
-
-## Run
-```bash
-python run_scrape.py --portal bayut --dry-run   # test without writing
-python run_scrape.py --portal bayut             # write to Supabase
-python run_scrape.py                            # all available portals
+├── frontend/              The website (Vite + React) — deployed on Vercel
+│   ├── src/               Pages, components, styles
+│   ├── api/               Serverless function for the Gemini AI assistant
+│   └── public/            Static assets + landData.json (the data snapshot)
+│
+├── backend/               The data engine (Python)
+│   ├── scrapers/          One scraper per portal + area matcher + normaliser
+│   ├── db/                Supabase client + database schema
+│   ├── run_scrape.py      Scrape all 3 portals → Supabase
+│   ├── make_snapshot.py   Supabase → frontend/public/landData.json
+│   └── requirements.txt   Python dependencies
+│
+├── docs/                  HANDOVER.md (operations guide) + project guide PDF
+├── extras/                Optional add-ons (password reset page)
+├── setup.bat              One-time PC setup (installs everything)
+├── scrape_and_publish.bat ONE CLICK: scrape → rebuild → publish to live site
+├── schedule_weekly.bat    Turn on the automatic weekly refresh
+└── .github/workflows/     Free weekly Property Finder refresh in the cloud
 ```
 
-## Conventions
-- Idempotent: upsert on `source_url`, re-runs update rather than duplicate.
-- Be polite: random 2–6s delays, low concurrency, stop if blocked.
-- Secrets live only in `.env` (never committed). Scraped data in `data/` is gitignored.
-- Keep each portal's selectors/endpoints isolated in its own file.
+## How data flows
+
+```
+Bayut / Dubizzle / Property Finder
+        │  (scrape_and_publish.bat — real Chrome, 20–45 min)
+        ▼
+     Supabase  (all listings, deduplicated by URL)
+        │  (make_snapshot.py)
+        ▼
+frontend/public/landData.json
+        │  (git push)
+        ▼
+   Vercel auto-deploys → live dashboard updates
+```
+
+## Valuation methodology
+
+- **Land**: annual rent = real sale price × yield (5–8%, default 6.5%).
+- **Commercial units**: real market rent taken directly from listings — no yield.
+- Coverage: 54 Ajman areas (the client's 47 districts + 7 portal areas). Areas with
+  no portal listings honestly show "no data yet".
+
+## Quick start
+
+- **Refresh the data (one click):** double-click `scrape_and_publish.bat`.
+- **Make it automatic:** double-click `schedule_weekly.bat` (Sundays 07:00).
+- **Run the website locally:** `cd frontend && npm install && npm run dev`
+- **New PC setup:** install Python 3.11+, Chrome, Git → place `.env` in the project
+  root → double-click `setup.bat`.
+
+Secrets live in `.env` (project root) and `frontend/.env` — both gitignored, never
+committed. See **[docs/HANDOVER.md](docs/HANDOVER.md)** for the full operations and
+handover guide, and **docs/** for the complete project guide PDF.

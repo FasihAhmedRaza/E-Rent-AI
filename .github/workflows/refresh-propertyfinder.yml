@@ -30,7 +30,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
+          pip install -r backend/requirements.txt
           patchright install chrome || true   # runner already ships Google Chrome
 
       - name: Scrape Property Finder (headless)
@@ -40,18 +40,18 @@ jobs:
           SCRAPE_HEADLESS: 'true'
           SCRAPE_MAX_PAGES: '10'
           PYTHONUTF8: '1'
-        run: python run_scrape.py --portal propertyfinder
+        run: python backend/run_scrape.py --portal propertyfinder
 
       - name: Rebuild the website data file
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           PYTHONUTF8: '1'
-        run: python make_snapshot.py
+        run: python backend/make_snapshot.py
 
       - name: Publish (commit only if the data actually changed)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add webapp/public/landData.json
+          git add frontend/public/landData.json
           git diff --cached --quiet || { git commit -m "data: scheduled Property Finder refresh"; git push; }

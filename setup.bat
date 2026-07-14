@@ -7,7 +7,7 @@ REM ============================================================
 cd /d "%~dp0"
 
 echo [1/3] Installing Python packages...
-pip install -r requirements.txt
+pip install -r backend\requirements.txt
 if errorlevel 1 goto :fail
 
 echo.
