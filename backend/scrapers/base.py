@@ -59,7 +59,11 @@ class BaseScraper:
         self.headless = _env_bool("SCRAPE_HEADLESS", False) if headless is None else headless
         self.min_delay = float(min_delay if min_delay is not None else os.getenv("SCRAPE_MIN_DELAY", 2))
         self.max_delay = float(max_delay if max_delay is not None else os.getenv("SCRAPE_MAX_DELAY", 6))
-        self.max_pages = int(os.getenv("SCRAPE_MAX_PAGES", 20))
+        # Safety ceiling only — each scraper stops naturally when the portal runs out
+        # of results (Bayut uses its own nbPages; Dubizzle/PF stop on an empty page).
+        # Keep this HIGH: a low cap silently truncates inventory and makes small areas
+        # look empty (we previously capped at 20 while Bayut reported 54 pages).
+        self.max_pages = int(os.getenv("SCRAPE_MAX_PAGES", 250))
         self.profile_dir = os.path.abspath(profile_dir or os.getenv("SCRAPE_PROFILE_DIR", ".pw-profile"))
         self._pw = None
         self.context = None

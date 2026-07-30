@@ -40,6 +40,12 @@ def main() -> None:
     ap.add_argument("--portal", choices=list(PORTALS) + ["all"], default="all")
     ap.add_argument("--seed-areas", action="store_true", help="seed the areas table then exit")
     ap.add_argument("--dry-run", action="store_true", help="scrape but do not write to the DB")
+    ap.add_argument("--deep-areas", action="store_true",
+                    help="also sweep areas by their own URL (catches small districts that "
+                         "Ajman-wide searches bury). Bayut + Dubizzle.")
+    ap.add_argument("--only-areas", default="",
+                    help="comma-separated area keys to limit --deep-areas to, e.g. "
+                         "mushairef,zahia2,mbz1 (much faster than sweeping all 54)")
     args = ap.parse_args()
 
     if args.seed_areas:
@@ -56,7 +62,13 @@ def main() -> None:
     for name in targets:
         log.info("=== scraping %s ===", name)
         try:
-            rows = PORTALS[name]().run(dry_run=args.dry_run)
+            kw = {"dry_run": args.dry_run}
+            if args.deep_areas and name in ("bayut", "dubizzle"):
+                kw["deep_areas"] = True
+                only = [a.strip() for a in args.only_areas.split(",") if a.strip()]
+                if only:
+                    kw["only_areas"] = only
+            rows = PORTALS[name]().run(**kw)
             totals[name] = len(rows)
         except Exception as exc:  # noqa: BLE001
             log.exception("%s failed: %s", name, exc)

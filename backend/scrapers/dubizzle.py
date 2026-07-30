@@ -66,8 +66,14 @@ def _en(value):
     return value.get("en") if isinstance(value, dict) else value
 
 
-def _page_url(path: str, page: int) -> str:
-    return f"{BASE}{path}" if page <= 1 else f"{BASE}{path}?page={page}"
+def _page_url(path: str, page: int, area_slug: str | None = None) -> str:
+    p = f"{path}{area_slug}/" if area_slug else path
+    return f"{BASE}{p}" if page <= 1 else f"{BASE}{p}?page={page}"
+
+
+def _area_slug(name_en: str) -> str:
+    """'Al Rumailah 3' -> 'al-rumailah-3' (Dubizzle's URL segment convention)."""
+    return re.sub(r"[^a-z0-9]+", "-", name_en.strip().lower()).strip("-")
 
 
 def _to_date(value):
@@ -145,12 +151,12 @@ class DubizzleScraper(BaseScraper):
             "external_id": ext,
         }
 
-    def _scrape_search(self, path: str, listing_type: str) -> list[dict]:
+    def _scrape_search(self, path: str, listing_type: str, area_slug: str | None = None) -> list[dict]:
         page = self.new_page()
         all_hits: dict = {}
         try:
             for pg in range(1, self.max_pages + 1):
-                if not self.goto(page, _page_url(path, pg)):
+                if not self.goto(page, _page_url(path, pg, area_slug)):
                     break
                 page.wait_for_timeout(1200)
                 hits = _extract_hits(page.content())
@@ -173,7 +179,8 @@ class DubizzleScraper(BaseScraper):
                 pass
         return [self._map(h, listing_type) for h in all_hits.values()]
 
-    def run(self, dry_run: bool = False) -> list[dict]:
+    def run(self, dry_run: bool = False, deep_areas: bool = False,
+            only_areas: list[str] | None = None) -> list[dict]:
         rows: list[dict] = []
         with self:
             for path, listing_type in SEARCHES:
@@ -184,6 +191,23 @@ class DubizzleScraper(BaseScraper):
                     log.exception("slice %s failed: %s", path, exc)
                     continue
                 rows.extend(normalize_listing(x, self.source) for x in raws)
+
+            # Optional DEEP per-area sweep: Ajman-wide searches bury small districts,
+            # so query each area's own URL. Slugs that don't exist return 0 and are skipped.
+            if deep_areas:
+                from .areas import AREAS
+                targets = {k: v for k, v in AREAS.items() if not only_areas or k in only_areas}
+                log.info("=== dubizzle AREA SWEEP over %d area(s) ===", len(targets))
+                for ak, meta in targets.items():
+                    slug = _area_slug(meta["en"])
+                    for path, listing_type in SEARCHES:
+                        try:
+                            raws = self._scrape_search(path, listing_type, area_slug=slug)
+                        except Exception:  # noqa: BLE001
+                            continue
+                        if raws:
+                            log.info("  [area sweep] %s%s: %d listings", path, slug, len(raws))
+                            rows.extend(normalize_listing(x, self.source) for x in raws)
 
         uniq = {r["source_url"]: r for r in rows if r.get("source_url")}
         rows = list(uniq.values())

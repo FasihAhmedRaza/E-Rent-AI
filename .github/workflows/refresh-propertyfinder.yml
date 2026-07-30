@@ -1,0 +1,57 @@
+# Free weekly auto-refresh of Property Finder data (the one portal that works
+# without a visible browser). Bayut + Dubizzle still refresh via
+# scrape_and_publish.bat on a real PC — they block headless browsers.
+#
+# Needs two repository secrets (Settings -> Secrets and variables -> Actions):
+#   SUPABASE_URL   = https://<project>.supabase.co
+#   SUPABASE_KEY   = the sb_secret_ key
+#
+# Also runnable by hand: Actions tab -> "Refresh Property Finder data" -> Run workflow.
+name: Refresh Property Finder data
+
+on:
+  schedule:
+    - cron: '0 3 * * 3'   # every Wednesday 03:00 UTC (07:00 UAE)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          patchright install chrome || true   # runner already ships Google Chrome
+
+      - name: Scrape Property Finder (headless)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SCRAPE_HEADLESS: 'true'
+          SCRAPE_MAX_PAGES: '250'   # exhaust every search; a low cap truncates inventory
+          PYTHONUTF8: '1'
+        run: python backend/run_scrape.py --portal propertyfinder
+
+      - name: Rebuild the website data file
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          PYTHONUTF8: '1'
+        run: python backend/make_snapshot.py
+
+      - name: Publish (commit only if the data actually changed)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add frontend/public/landData.json
+          git diff --cached --quiet || { git commit -m "data: scheduled Property Finder refresh"; git push; }

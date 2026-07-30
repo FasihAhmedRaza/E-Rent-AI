@@ -74,9 +74,17 @@ COMMERCIAL_SEARCHES = [
 ]
 
 
-def _page_url(purpose: str, cat_slug: str, page: int) -> str:
+def _page_url(purpose: str, cat_slug: str, page: int, area_slug: str | None = None) -> str:
     base = f"{BASE}/{purpose}/{cat_slug}/ajman/"
+    if area_slug:
+        base = f"{base}{area_slug}/"
     return base if page <= 1 else f"{base}page-{page}/"
+
+
+def _area_slug(name_en: str) -> str:
+    """'Al Rumailah 3' -> 'al-rumailah-3' (Bayut's URL segment convention)."""
+    import re as _re
+    return _re.sub(r"[^a-z0-9]+", "-", name_en.strip().lower()).strip("-")
 
 
 def _extract_state(html: str):
@@ -180,13 +188,14 @@ class BayutScraper(BaseScraper):
             "external_id": ext,
         }
 
-    def _scrape_search(self, purpose: str, cat_slug: str, listing_type: str) -> list[dict]:
+    def _scrape_search(self, purpose: str, cat_slug: str, listing_type: str,
+                       area_slug: str | None = None) -> list[dict]:
         category, subtype = CATEGORY_MAP.get(cat_slug, (None, None))
         page = self.new_page()
         all_hits: dict = {}
         try:
             for pg in range(1, self.max_pages + 1):
-                if not self.goto(page, _page_url(purpose, cat_slug, pg)):
+                if not self.goto(page, _page_url(purpose, cat_slug, pg, area_slug)):
                     break
                 page.wait_for_timeout(800)
                 html = page.content()
@@ -208,6 +217,11 @@ class BayutScraper(BaseScraper):
                          purpose, cat_slug, pg, len(hits), fresh, len(all_hits), nb)
                 if fresh == 0 or (nb and pg >= nb):
                     break
+                # never silently truncate: shout if the safety cap cuts real inventory
+                if pg >= self.max_pages and nb and nb > self.max_pages:
+                    log.warning("  !! TRUNCATED %s/%s: fetched %d of %d pages "
+                                "(raise SCRAPE_MAX_PAGES) — listings in small areas may be missed",
+                                purpose, cat_slug, pg, nb)
         finally:
             try:
                 page.close()
@@ -215,7 +229,8 @@ class BayutScraper(BaseScraper):
                 pass
         return [self._map(h, listing_type, category, subtype) for h in all_hits.values()]
 
-    def run(self, dry_run: bool = False) -> list[dict]:
+    def run(self, dry_run: bool = False, deep_areas: bool = False,
+            only_areas: list[str] | None = None) -> list[dict]:
         rows: list[dict] = []
         searches = SEARCHES + (COMMERCIAL_SEARCHES if self.include_commercial else [])
         with self:
@@ -227,6 +242,24 @@ class BayutScraper(BaseScraper):
                     log.exception("slice %s/%s failed: %s", purpose, cat_slug, exc)
                     continue
                 rows.extend(normalize_listing(r, self.source) for r in raws)
+
+            # Optional DEEP per-area sweep: Ajman-wide searches bury small districts,
+            # so search each area by its own Bayut URL segment. Slugs that don't exist
+            # simply return 0 hits and are skipped.
+            if deep_areas:
+                from .areas import AREAS
+                targets = {k: v for k, v in AREAS.items() if not only_areas or k in only_areas}
+                log.info("=== bayut AREA SWEEP over %d area(s) ===", len(targets))
+                for ak, meta in targets.items():
+                    slug = _area_slug(meta["en"])
+                    for purpose, cat_slug, listing_type in searches:
+                        try:
+                            raws = self._scrape_search(purpose, cat_slug, listing_type, area_slug=slug)
+                        except Exception:  # noqa: BLE001
+                            continue
+                        if raws:
+                            log.info("  [area sweep] %s / %s %s: %d listings", slug, cat_slug, listing_type, len(raws))
+                            rows.extend(normalize_listing(r, self.source) for r in raws)
 
         uniq = {r["source_url"]: r for r in rows if r.get("source_url")}
         rows = list(uniq.values())
