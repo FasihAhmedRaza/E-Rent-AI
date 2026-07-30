@@ -649,6 +649,8 @@ tbody tr:hover .view-link{color:var(--pine);text-decoration:underline}
 /* "how this is calculated" methodology note (shown on each data view) */
 .basis-note{display:flex;align-items:flex-start;gap:8px;font-size:.78rem;color:var(--muted);font-weight:600;background:var(--tint);border:1px solid #D3E3DD;border-radius:11px;padding:9px 13px;margin-bottom:14px;line-height:1.5}
 .basis-note svg{width:15px;height:15px;color:var(--teal);flex:none;margin-top:1px}
+.basis-note.parent{background:#FDF6E6;border-color:#EBD9AE;color:#7A5B12}
+.basis-note.parent svg{color:var(--gold2)}
 
 /* ===== Premium assistant (full page + popup widget) ===== */
 .asst-page{height:calc(100vh - 150px);min-height:520px;overflow:hidden;border-radius:18px}

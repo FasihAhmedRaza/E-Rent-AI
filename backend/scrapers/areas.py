@@ -32,7 +32,8 @@ AREAS: dict[str, dict] = {
     "nuaimiya1":  {"en": "Al Nuaimiya 1",       "ar": "النعيمية 1"},
     "nuaimiya2":  {"en": "Al Nuaimiya 2",       "ar": "النعيمية 2"},
     "nuaimiya3":  {"en": "Al Nuaimiya 3",       "ar": "النعيمية 3"},
-    "mushairef":  {"en": "Mushairef",           "ar": "مشيرف"},
+    "mushairef":  {"en": "Mushairef",           "ar": "مشيرف",
+                   "aliases": ["Musheiref", "Mushrif", "Mushref", "Mushairif", "Musherief"]},
     "safia":      {"en": "Al Safia",            "ar": "الصفيا"},
     "zorah":      {"en": "Al Zorah",            "ar": "الزوراء"},
     "jurfind1":   {"en": "Al Jurf Industrial 1", "ar": "الجرف الصناعية 1"},
@@ -71,7 +72,10 @@ AREAS: dict[str, dict] = {
     # Additional real Ajman areas/developments the portals use heavily (beyond the core 47).
     "albahia":    {"en": "Al Bahia",            "ar": "الباهية", "aliases": ["Al Bahia Hills", "Bahia"]},
     "downtown":   {"en": "Ajman Downtown",      "ar": "وسط مدينة عجمان",
-                   "aliases": ["Downtown Ajman", "Horizon Tower", "Horizon Towers", "Falcon Tower", "Falcon Towers", "Conquer Tower", "City Tower", "Ajman One"]},
+                   # NOTE: never add an alias that reduces to the bare city name (e.g.
+                   # "Ajman One" normalises to "ajman 1", whose parent base is "ajman",
+                   # which would then swallow every Ajman listing into Downtown).
+                   "aliases": ["Downtown Ajman", "Horizon Tower", "Horizon Towers", "Falcon Tower", "Falcon Towers", "Conquer Tower", "City Tower"]},
     "corniche":   {"en": "Ajman Corniche",      "ar": "كورنيش عجمان",
                    "aliases": ["Corniche Ajman", "Ajman Corniche Residence", "Ajman Corniche Residences", "Corniche Tower", "Corniche Road"]},
     "bustan":     {"en": "Al Bustan",           "ar": "البستان"},
@@ -119,20 +123,42 @@ def _variants(key: str) -> set[str]:
     return {v for v in out if v}
 
 
+def _canonical(key: str) -> set[str]:
+    """Official EN/AR names only (no aliases). Checked FIRST so a real district name
+    always beats a building/landmark alias — e.g. 'Gate Tower 1, Musheiref' must map
+    to Mushairef, not to the Downtown alias 'Gate Tower'."""
+    a = AREAS[key]
+    return {v for v in (_norm(a["en"]), _norm(a.get("ar", ""))) if v}
+
+
 def _base(s: str) -> str:
     """Drop a trailing number -> parent group, e.g. 'jurf 2' -> 'jurf'."""
     return re.sub(r"\s*\d+\s*$", "", s).strip()
 
 
+# canonical (official EN/AR) name -> area_key; consulted before aliases
+_CANON_TO_KEY: dict[str, str] = {}
+for _k in AREAS:
+    for _v in _canonical(_k):
+        _CANON_TO_KEY.setdefault(_v, _k)
+
 # variant string -> area_key (first writer wins, so canonical names dominate)
 _VARIANT_TO_KEY: dict[str, str] = {}
 # parent group -> [area_keys] (for "Al Jurf" with no number)
 _BASE_TO_KEYS: dict[str, list[str]] = {}
+# city/emirate-level words must never become a parent group: they appear in almost
+# every location string and would swallow unmatched listings into one area.
+_TOO_GENERIC = {"ajman", "dubai", "sharjah", "uae", "emirates", "downtown"}
+
+# City-region designations that portals append as a SUFFIX ("..., Ajman Downtown, Ajman").
+# They are real areas, but a specific district named in the same string must win.
+_REGION_LEVEL = {"downtown"}
+
 for _k in AREAS:
     for _v in _variants(_k):
         _VARIANT_TO_KEY.setdefault(_v, _k)
         _b = _base(_v)
-        if _b and _b != _v:
+        if _b and _b != _v and _b not in _TOO_GENERIC:
             _BASE_TO_KEYS.setdefault(_b, [])
             if _k not in _BASE_TO_KEYS[_b]:
                 _BASE_TO_KEYS[_b].append(_k)
@@ -141,17 +167,52 @@ for _k in AREAS:
 def match_area(raw: str | None) -> str | None:
     """Map messy portal location text to an area_key, or None if no confident match."""
     n = _norm(raw or "")
-    if not n:
-        return None
+    if not n or n in _TOO_GENERIC:
+        return None          # just "Ajman" carries no district signal
 
     # 1) exact normalised match
     if n in _VARIANT_TO_KEY:
         return _VARIANT_TO_KEY[n]
 
-    # 2) a known area name appears inside the raw text (prefer the longest match)
-    for v in sorted(_VARIANT_TO_KEY, key=len, reverse=True):
-        if len(v) >= 4 and v in n:
-            return _VARIANT_TO_KEY[v]
+    # 2a) an OFFICIAL district name appears in the text. Portals write location strings
+    #     most-specific-first ("Al Jurf 3, Al Jurf, Ajman Downtown, Ajman"), so prefer the
+    #     EARLIEST match, breaking ties by the longest name. Canonical names are checked
+    #     before aliases so a landmark alias can't hijack a real district.
+    def _leftmost(table: dict[str, str]) -> str | None:
+        """Pick the most specific match. Portals disagree on ordering — Bayut writes
+        specific-first ("Al Jurf 3, Al Jurf, ...") while Dubizzle writes parent-first
+        ("Al Helio, Al Helio 2, ...") — so a NUMBERED sub-area always outranks an
+        unnumbered parent; position (then length) only breaks ties."""
+        best: tuple[tuple[int, int, int, int], str] | None = None
+        for v, k in table.items():
+            if len(v) < 4:
+                continue
+            i = n.find(v)
+            if i < 0:
+                continue
+            numbered = 0 if re.search(r"\d\s*$", v) else 1
+            region = 1 if k in _REGION_LEVEL else 0
+            # numbered sub-area first, then a real district over a city region,
+            # then the longest (most specific) name, then the earliest position
+            rank = (numbered, region, -len(v), i)
+            if best is None or rank < best[0]:
+                best = (rank, k)
+        return best[1] if best else None
+
+    # official names AND parent-group names compete together on position, so an
+    # unnumbered district ("Al Rashidiya") still beats a later city-level match
+    # ("Ajman Downtown"), while a numbered one ("Al Jurf 3") wins its own tie.
+    canon_and_groups = dict(_CANON_TO_KEY)
+    for _b, _keys in _BASE_TO_KEYS.items():
+        canon_and_groups.setdefault(_b, sorted(_keys)[0])
+    hit = _leftmost(canon_and_groups)
+    if hit:
+        return hit
+
+    # 2b) otherwise fall back to aliases / known portal spellings
+    hit = _leftmost(_VARIANT_TO_KEY)
+    if hit:
+        return hit
 
     # 3) only a parent name matched (e.g. "Al Jurf") -> pick its first sub-area
     nb = _base(n)

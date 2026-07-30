@@ -96,5 +96,6 @@ export const areaAvgRent = (a, type, yld) => {
   return b && b.vavg != null ? b.vavg * yld : 0
 }
 
-// true if the area has any real listings (land: sale count; commercial: rent or sale count)
+// true if the area has usable figures — its own listings, or its parent group's
+// (portals often list only the parent name, without the sub-area number)
 export const areaHasData = (a) => !!(a && (a.n || (a.saleStats && a.saleStats.n)))

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import statistics
 from collections import defaultdict
 
@@ -67,6 +68,21 @@ def med(l):
     return round(statistics.median(l)) if l else None
 
 
+def parent_base(name_en: str) -> str:
+    """'Al Zahia 2' -> 'Al Zahia'. Portals frequently omit the sub-area number
+    (they write just 'Al Zahya'), so numbered siblings can look empty while the
+    parent group has plenty of listings. Used to fall back to group figures."""
+    return re.sub(r"\s*\d+$", "", name_en or "").strip()
+
+
+def group_listings(by_area: dict) -> dict:
+    """area_key -> parent group name -> pooled listings of every sibling."""
+    groups: dict[str, list] = defaultdict(list)
+    for ak, ls in by_area.items():
+        groups[parent_base(AREA_NAMES.get(ak, {}).get("en", ak))].extend(ls)
+    return groups
+
+
 def vstats(items):
     """Aggregate [{'value','ppsf'}] -> {n,ppsf,low,avg,high} or None."""
     vals = sorted(x["value"] for x in items if x.get("value"))
@@ -113,13 +129,23 @@ def build_land(rows, coords):
     for l in sale:
         by_area[l["area"]].append(l)
 
+    groups = group_listings(by_area)
+
     areas = []
-    for ak in AREA_NAMES:  # emit ALL 47 areas so every area is selectable (empty ones flagged n=0)
+    for ak in AREA_NAMES:  # emit ALL areas so every area is selectable
         ls = by_area.get(ak, [])
         m = META.get(ak, [25.4, 55.5, 0, 0])
         ll = coords.get(ak) or [m[0], m[1]]
         base = {"key": ak, "en": AREA_NAMES[ak]["en"], "ar": AREA_NAMES[ak]["ar"],
                 "ll": ll, "trend": m[2], "coast": bool(m[3])}
+        from_parent = False
+        if not ls:
+            # fall back to the parent group (portals omit the sub-area number)
+            pname = parent_base(AREA_NAMES[ak]["en"])
+            pooled = groups.get(pname) or []
+            if pooled:
+                ls, from_parent = pooled, True
+                base["fromParent"] = pname
         if not ls:
             areas.append({**base, "ppsf": None, "n": 0, "vlow": None, "vavg": None,
                           "vhigh": None, "bytype": {}, "sources": {}})
@@ -139,7 +165,9 @@ def build_land(rows, coords):
 
     allppsf = sorted(x["ppsf"] for x in sale)
     kpis = {
-        "total_listings": len(listings), "sale": len(sale), "areas": sum(1 for a in areas if a["n"]),
+        "total_listings": len(listings), "sale": len(sale),
+        # honest count: areas with their OWN listings (parent-group fallbacks excluded)
+        "areas": sum(1 for a in areas if a["n"] and not a.get("fromParent")),
         "median_ppsf": med(allppsf), "p10": allppsf[len(allppsf)//10] if allppsf else None,
         "p90": allppsf[9*len(allppsf)//10] if allppsf else None,
         "by_source": {s: sum(1 for l in listings if l["src"] == s) for s in SOURCES},
@@ -175,13 +203,22 @@ def build_commercial(rows, coords):
     for it in items:
         by_area[it["area"]].append(it)
 
+    groups = group_listings(by_area)
+
     areas = []
-    for ak in AREA_NAMES:  # emit ALL 47 areas (empty ones flagged rent/sale None)
+    for ak in AREA_NAMES:  # emit ALL areas (truly empty ones flagged rent/sale None)
         ls = by_area.get(ak, [])
         m = META.get(ak, [25.4, 55.5, 0, 0])
         ll = coords.get(ak) or [m[0], m[1]]
         base = {"key": ak, "en": AREA_NAMES[ak]["en"], "ar": AREA_NAMES[ak]["ar"],
                 "ll": ll, "trend": m[2], "coast": bool(m[3])}
+        if not ls:
+            # fall back to the parent group (portals omit the sub-area number)
+            pname = parent_base(AREA_NAMES[ak]["en"])
+            pooled = groups.get(pname) or []
+            if pooled:
+                ls = pooled
+                base["fromParent"] = pname
         rent_items = [x for x in ls if x["lt"] == "rent" and x["value"] and x["ppsf"]]
         sale_items = [x for x in ls if x["lt"] == "sale" and x["value"] and x["ppsf"]]
         bytype = {}
@@ -202,7 +239,8 @@ def build_commercial(rows, coords):
     kpis = {
         "rent_listings": sum(1 for x in items if x["lt"] == "rent"),
         "sale_listings": sum(1 for x in items if x["lt"] == "sale"),
-        "areas": sum(1 for a in areas if a["rent"] or a["sale"]),
+        # honest count: areas with their OWN listings (parent-group fallbacks excluded)
+        "areas": sum(1 for a in areas if (a["rent"] or a["sale"]) and not a.get("fromParent")),
         "median_rent_ppsf": med(rent_ppsf_all),
         "by_source": {s: sum(1 for x in items if x["src"] == s) for s in SOURCES},
         "by_type": {st: sum(1 for x in items if x["subtype"] == st) for st in UNIT_SUBTYPES
