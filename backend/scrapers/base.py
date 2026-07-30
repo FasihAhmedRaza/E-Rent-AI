@@ -64,7 +64,21 @@ class BaseScraper:
         # Keep this HIGH: a low cap silently truncates inventory and makes small areas
         # look empty (we previously capped at 20 while Bayut reported 54 pages).
         self.max_pages = int(os.getenv("SCRAPE_MAX_PAGES", 250))
-        self.profile_dir = os.path.abspath(profile_dir or os.getenv("SCRAPE_PROFILE_DIR", ".pw-profile"))
+        # PER-PORTAL profile by default (".pw-profile-bayut", "-dubizzle", ...).
+        # Chrome locks a profile folder, so sharing one across portals makes a second
+        # run die with "profile is already in use". Separate folders let portals run
+        # side by side and keep their own anti-bot cookies. SCRAPE_PROFILE_DIR still
+        # overrides; a legacy ".pw-profile" is reused if this portal has no folder yet.
+        if profile_dir is None:
+            profile_dir = os.getenv("SCRAPE_PROFILE_DIR")
+        if profile_dir is None:
+            per_portal = f".pw-profile-{self.source}"
+            # Bayut keeps the original ".pw-profile" (its solved-CAPTCHA session lives
+            # there); every other portal gets its own folder, so no two runs collide.
+            legacy_ok = self.source == "bayut" and os.path.isdir(".pw-profile") \
+                and not os.path.isdir(per_portal)
+            profile_dir = ".pw-profile" if legacy_ok else per_portal
+        self.profile_dir = os.path.abspath(profile_dir)
         self._pw = None
         self.context = None
 
