@@ -150,6 +150,7 @@ def _area_raw(hit: dict) -> str:
 class BayutScraper(BaseScraper):
     source = "bayut"
     include_commercial = True  # scrape land plots + all commercial unit types
+    _blocked = False           # set when an unsolved CAPTCHA makes further requests pointless
 
     @staticmethod
     def _hits(state) -> list:
@@ -201,6 +202,17 @@ class BayutScraper(BaseScraper):
                 html = page.content()
                 state = _extract_state(html)
                 hits = self._hits(state)
+                if not hits and self.page_has_captcha(page):
+                    # inline anti-bot challenge: pause for a human solve, then retry this page
+                    if not self.wait_for_captcha(page):
+                        self._blocked = True
+                        break
+                    if not self.goto(page, _page_url(purpose, cat_slug, pg, area_slug)):
+                        break
+                    page.wait_for_timeout(800)
+                    html = page.content()
+                    state = _extract_state(html)
+                    hits = self._hits(state)
                 if not hits:
                     log.warning("  %s/%s page %d: 0 hits (html_len=%d window.state=%s captcha=%s)",
                                 purpose, cat_slug, pg, len(html),
@@ -235,6 +247,8 @@ class BayutScraper(BaseScraper):
         searches = SEARCHES + (COMMERCIAL_SEARCHES if self.include_commercial else [])
         with self:
             for purpose, cat_slug, listing_type in searches:
+                if self._blocked:
+                    break
                 log.info("=== bayut %s %s (%s) ===", cat_slug, listing_type, purpose)
                 try:
                     raws = self._scrape_search(purpose, cat_slug, listing_type)
@@ -251,8 +265,12 @@ class BayutScraper(BaseScraper):
                 targets = {k: v for k, v in AREAS.items() if not only_areas or k in only_areas}
                 log.info("=== bayut AREA SWEEP over %d area(s) ===", len(targets))
                 for ak, meta in targets.items():
+                    if self._blocked:
+                        break
                     slug = _area_slug(meta["en"])
                     for purpose, cat_slug, listing_type in searches:
+                        if self._blocked:
+                            break
                         try:
                             raws = self._scrape_search(purpose, cat_slug, listing_type, area_slug=slug)
                         except Exception:  # noqa: BLE001

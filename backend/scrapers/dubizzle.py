@@ -160,6 +160,14 @@ class DubizzleScraper(BaseScraper):
                     break
                 page.wait_for_timeout(1200)
                 hits = _extract_hits(page.content())
+                if not hits and self.page_has_captcha(page, data_marker="__NEXT_DATA__"):
+                    # DataDome inline challenge: pause for a human solve, then retry this page
+                    if not self.wait_for_captcha(page, data_marker="__NEXT_DATA__"):
+                        break
+                    if not self.goto(page, _page_url(path, pg, area_slug)):
+                        break
+                    page.wait_for_timeout(1200)
+                    hits = _extract_hits(page.content())
                 if not hits:
                     log.warning("  %s page %d: 0 hits (stopping)", path, pg)
                     break

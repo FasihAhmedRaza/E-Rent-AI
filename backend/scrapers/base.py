@@ -163,6 +163,42 @@ class BaseScraper:
         except Exception:
             return False
 
+    def page_has_captcha(self, page, *, data_marker: str = "window.state") -> bool:
+        """True if the page is showing an INLINE anti-bot challenge instead of content.
+        Bayut serves its CAPTCHA at the same URL, so a URL check alone misses it."""
+        try:
+            html = page.content()
+        except Exception:
+            return False
+        if data_marker and data_marker in html:
+            return False                      # real content is present
+        low = html.lower()
+        return any(k in low for k in ("captcha", "are you a human", "verify you are human",
+                                      "unusual traffic", "access denied"))
+
+    def wait_for_captcha(self, page, *, data_marker: str = "window.state",
+                         timeout: int = 300) -> bool:
+        """Headed mode: pause so a human can solve an inline CAPTCHA, then continue.
+        Returns True once the real page content appears."""
+        if self.headless:
+            log.error("CAPTCHA hit while HEADLESS — re-run headed (SCRAPE_HEADLESS=false) "
+                      "and solve it once; the session then persists in the profile.")
+            return False
+        log.warning("=" * 70)
+        log.warning(">>> CAPTCHA DETECTED — please SOLVE IT in the Chrome window now.")
+        log.warning(">>> Waiting up to %ss. Scraping resumes automatically after you solve it.", timeout)
+        log.warning("=" * 70)
+        waited = 0
+        while waited < timeout:
+            time.sleep(3)
+            waited += 3
+            if not self.page_has_captcha(page, data_marker=data_marker):
+                log.info("CAPTCHA cleared — resuming scrape.")
+                self.delay()
+                return True
+        log.error("CAPTCHA not solved within %ss — aborting this run.", timeout)
+        return False
+
     def wait_for_human(self, page, timeout: int = 180) -> bool:
         """Headed mode: pause for a one-time manual CAPTCHA solve, then continue."""
         if self.headless:
