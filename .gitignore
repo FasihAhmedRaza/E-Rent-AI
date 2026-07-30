@@ -12,10 +12,10 @@ __pycache__/
 venv/
 env/
 
-# playwright / patchright
+# playwright / patchright (browser profiles: .pw-profile, .pw-profile-bayut, ...)
 playwright-report/
 .cache/
-.pw-profile/
+.pw-profile*/
 
 # logs / os
 *.log
