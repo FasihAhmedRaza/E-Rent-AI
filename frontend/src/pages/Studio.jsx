@@ -429,7 +429,7 @@ function estNote(lang, o) {
 
 // ===== Commercial units Studio: market-rent estimator + sale→rent ROI =====
 function CommercialStudio() {
-  const { areas, kpis, lang, area, type } = useStore()
+  const { areasAll: areas, kpis, lang, area, type } = useStore()
   const t = useMemo(() => ({ ...(STUDIO_STRINGS[lang] || STUDIO_STRINGS.en), ...(T[lang] || {}) }), [lang])
   const unitTypes = Object.keys(TYPES_COMMERCIAL).filter((k) => (kpis.by_type || {})[k])
   const tName = (k) => (TYPES_COMMERCIAL[k] ? TYPES_COMMERCIAL[k][lang] : k)

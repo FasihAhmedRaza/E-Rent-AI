@@ -66,6 +66,23 @@ html[dir=rtl] .sel::after{border-inline-start:none;border-inline-end:2px solid v
 .seg button{font-family:inherit;font-weight:700;font-size:.86rem;color:var(--muted);background:transparent;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;white-space:nowrap;transition:.15s}
 .seg button.on{color:#fff;background:linear-gradient(150deg,var(--pine-soft),var(--pine2));box-shadow:0 5px 13px -7px rgba(11,74,69,.6)}
 .seg button:not(.on):hover{color:var(--ink);background:var(--bg)}
+/* size box: compare only with listings of a similar size */
+.size-field{min-width:230px;flex:0 1 296px}
+.size-row{display:flex;gap:8px;align-items:stretch}
+.size-in{position:relative;flex:1 1 auto;min-width:120px}
+.size-in input{width:100%;font-family:inherit;font-weight:600;font-size:.9rem;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:11px;padding:11px 62px 11px 15px;box-shadow:var(--sh-sm);transition:.15s}
+html[dir=rtl] .size-in input{padding:11px 15px 11px 62px}
+.size-in input::placeholder{color:var(--faint);font-weight:600}
+.size-in input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(46,139,129,.13)}
+.size-unit{position:absolute;inset-inline-end:13px;top:50%;transform:translateY(-50%);font-size:.76rem;font-weight:700;color:var(--faint);pointer-events:none}
+.size-clear{position:absolute;inset-inline-end:38px;top:50%;transform:translateY(-50%);width:19px;height:19px;border:none;border-radius:50%;background:var(--line);color:var(--muted);font-size:.9rem;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
+.size-clear:hover{background:var(--pine);color:#fff}
+.tol-sel{flex:0 0 132px}
+.tol-sel select{padding:11px 34px 11px 12px;font-size:.84rem}
+html[dir=rtl] .tol-sel select{padding:11px 12px 11px 34px}
+.size-note{flex:1 1 100%;margin:0}
+.size-reset{border:none;background:none;font-family:inherit;font-size:.78rem;font-weight:700;color:var(--teal);cursor:pointer;padding:0;margin-inline-start:8px;text-decoration:underline}
+.size-reset:hover{color:var(--pine)}
 .lt-badge{display:inline-block;font-size:.62rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px;vertical-align:middle}
 .lt-badge.rent{color:#0B4A45;background:rgba(46,139,129,.16)}
 .lt-badge.sale{color:#8a6a16;background:rgba(194,152,47,.18)}
@@ -580,10 +597,12 @@ tbody tr:hover .view-link{color:var(--pine);text-decoration:underline}
   .kpi .kv{font-size:1.5rem}
   .exec-grid{grid-template-columns:1fr 1fr}
   .roi-form,.est-form,.cmp-pick,.roi-grid,.rep-kpis{grid-template-columns:1fr!important}
-  .hero-top{flex-direction:column;align-items:flex-start;gap:12px}
+  .hero-top{flex-direction:column;align-items:flex-start;gap:12px;margin-bottom:46px}
   .hero-rt{align-items:flex-start}
   .filterbar{gap:10px}
   .filterbar .field{min-width:0;flex:1 1 100%}
+  .size-row{flex-wrap:nowrap}
+  .tol-sel{flex:0 0 122px}
   /* area comparison grid: tighter type/padding on phones so all columns stay readable */
   .cmp-l{font-size:.74rem;padding:9px 5px}
   .cmp-area{font-size:.78rem;padding:9px 4px}

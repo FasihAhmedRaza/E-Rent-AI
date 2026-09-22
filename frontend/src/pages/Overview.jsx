@@ -3,7 +3,7 @@ import { T, TYPES, TYPES_COMMERCIAL } from '../lib/i18n'
 import { fmt, money } from '../lib/format'
 
 export default function Overview() {
-  const { areas, lang, area, type, setArea, yld, isCommercial } = useStore()
+  const { areas, lang, area, type, setArea, yld, isCommercial, sizeSqft, setSize, sizeActive, sizeBand } = useStore()
   const t = T[lang]
   const nm = (x) => (lang === 'ar' ? x.ar : x.en)
   const a = areas.find((x) => x.key === area) || areas[0]
@@ -13,9 +13,18 @@ export default function Overview() {
     <div className="card" style={{ padding: '48px 30px', textAlign: 'center' }}>
       <div className="eyebrow">{isCommercial ? t.rangeEyebrowC : t.rangeEyebrow}</div>
       <h2 style={{ margin: '6px 0 10px' }}>{nm(a)}</h2>
-      <p className="sec-s">{lang === 'ar'
-        ? 'لا توجد عروض بعد لهذه المنطقة. تظهر الأرقام تلقائياً عند رصد عروض جديدة من Bayut وDubizzle وProperty Finder.'
-        : 'No listings yet for this area. Numbers appear automatically as new listings are found on Bayut, Dubizzle and Property Finder.'}</p>
+      {sizeActive ? (
+        <>
+          <p className="sec-s">{lang === 'ar'
+            ? `لا توجد عروض بمساحة قريبة من ${fmt(sizeSqft)} قدم في هذه المنطقة. جرّب تقارباً أوسع، أو اختر منطقة أخرى، أو اعرض كل المساحات.`
+            : `No listings close to ${fmt(sizeSqft)} sqft in this area. Try a wider match, pick another area, or show all sizes.`}</p>
+          <button className="btn" onClick={() => setSize('')}>{t.sizeClear}</button>
+        </>
+      ) : (
+        <p className="sec-s">{lang === 'ar'
+          ? 'لا توجد عروض بعد لهذه المنطقة. تظهر الأرقام تلقائياً عند رصد عروض جديدة من Bayut وDubizzle وProperty Finder.'
+          : 'No listings yet for this area. Numbers appear automatically as new listings are found on Bayut, Dubizzle and Property Finder.'}</p>
+      )}
     </div>
   )
   const typeMap = isCommercial ? TYPES_COMMERCIAL : TYPES
@@ -48,6 +57,9 @@ export default function Overview() {
           <div className="hero-rt">
             <span className="basis">{t.basisA}<b className="num">{fmt(s.n)}</b>{t.basisB}</span>
             <div className="hero-tags">
+              {sizeActive && sizeBand && (
+                <span className="hero-chip">{fmt(sizeBand.lo)} {lang === 'ar' ? 'إلى' : 'to'} {fmt(sizeBand.hi)} <b>{t.sqft}</b></span>
+              )}
               {!isCommercial && <span className="hero-chip">{lang === 'ar' ? 'العائد' : 'Yield'} <b>5–8%</b></span>}
               <span className="hero-chip">{fmt(s.ppsf)} <b>{t.cur}/{t.sqft}</b></span>
             </div>

@@ -9,7 +9,7 @@ const SRC_NAME = { bayut: 'Bayut', dubizzle: 'Dubizzle', propertyfinder: 'Proper
 const EXT = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3h7v7" /><path d="M10 14 21 3" /><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" /></svg>
 
 export default function Listings() {
-  const { listings, areas, kpis, lang, area, type, setType, search, yld, isCommercial } = useStore()
+  const { listings, listingsAll, areas, kpis, lang, area, type, setType, search, yld, isCommercial, sizeActive } = useStore()
   const t = T[lang]
   const [sortKey, setSortKey] = useState('value')
   const [sortDir, setSortDir] = useState(-1)
@@ -29,7 +29,8 @@ export default function Listings() {
   const aname = areaName[area] || ''
 
   const rows = useMemo(() => {
-    const r = listings
+    // a text search always spans the whole market; the size box only scopes the area view
+    const r = (q ? listingsAll : listings)
       // land: only SALE listings (rent is derived). commercial: rent + sale (both real).
       .filter((l) => l.value && l.size && (isCommercial || l.lt === 'sale')
         && (type === 'all' || l.type === type)
@@ -42,9 +43,9 @@ export default function Listings() {
       return ((xv || 0) - (yv || 0)) * sortDir
     })
     return r
-  }, [listings, area, type, yld, sortKey, sortDir, q, isCommercial])
+  }, [listings, listingsAll, area, type, yld, sortKey, sortDir, q, isCommercial])
 
-  useEffect(() => { setPage(1) }, [area, type, sortKey, sortDir, pageSize, q, isCommercial])
+  useEffect(() => { setPage(1) }, [area, type, sortKey, sortDir, pageSize, q, isCommercial, listings])
 
   const total = rows.length
   const pages = Math.max(1, Math.ceil(total / pageSize))
@@ -114,7 +115,11 @@ export default function Listings() {
                 <td className="r"><span className="view-link">{lang === 'ar' ? 'فتح الإعلان' : 'View ad'} {EXT}</span></td>
               </tr>
             ))}
-            {total === 0 && <tr><td colSpan={cols} className="empty">{t.noRes}</td></tr>}
+            {total === 0 && <tr><td colSpan={cols} className="empty">
+              {sizeActive && !q
+                ? (lang === 'ar' ? 'لا توجد عروض بهذه المساحة في هذه المنطقة. جرّب تقارباً أوسع أو امسح المساحة.' : 'No listings of that size in this area. Try a wider match, or clear the size.')
+                : t.noRes}
+            </td></tr>}
           </tbody>
         </table>
         </div>

@@ -20,6 +20,24 @@ day-to-day operation.
 - **Land**: annual rent = real sale price × yield (5–8%, default 6.5%).
 - **Commercial units**: real market rent taken directly from listings. No yield.
 
+**Size box (comparing like with like):** the filter bar on Overview, Map, Listings
+and Trends has a **size field**. Leave it on "Any size" and the figures cover every
+listing in the area, which mixes a small shop with a 60,000 sqft labour camp and
+produces a very wide range. Type the size of the shop or plot you care about and
+every figure on those pages is rebuilt from listings of a similar size only. The
+"Within 15/30/50%" box sets how close a comparable has to be; if that window holds
+fewer than six listings the app widens it automatically and says so. Inside the
+window, listings whose price per sqft is more than four times off the median are
+dropped as portal data errors (a sale price filed as a rent, for example).
+
+**Bad ads are filtered at source:** `make_snapshot.py` holds a `PPSF_BANDS` table of
+sane price per sqft limits. Ads outside them are ones where the price and the size do
+not describe the same thing: labour camps advertising a per room price against the
+whole building's size, co-working ads pricing one desk, broken sizes such as "90,000
+AED for 1 sqft", and sale prices filed under rent. That is about 3% of rows. Genuine
+extremes are kept on purpose, an 80M AED plot at 455 AED/sqft is a real 176,000 sqft
+mall plot. If a real listing is ever dropped, widen the band in that one table.
+
 ---
 
 ## 2. Accounts to transfer at handover

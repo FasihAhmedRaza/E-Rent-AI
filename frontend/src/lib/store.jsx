@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { buildComparables, TOLS } from './comparables'
 
 const Ctx = createContext(null)
 
@@ -24,6 +25,8 @@ export function StoreProvider({ children }) {
   const [area, setArea] = useState(null)
   const [type, setType] = useState('all')
   const [search, setSearch] = useState('')
+  const [size, setSize] = useState('')     // what the user typed, in sqft
+  const [tolIdx, setTolIdx] = useState(1)  // how close a comparable has to be (TOLS)
 
   useEffect(() => {
     fetch('/landData.json').then((r) => r.json()).then((d) => {
@@ -37,17 +40,38 @@ export function StoreProvider({ children }) {
   const isCommercial = category === 'commercial'
   const hasCommercial = !!(data && data.commercial && data.commercial.areas && data.commercial.areas.length)
 
-  const view = useMemo(() => {
+  // raw snapshot view for the active category (commercial areas still in rent{}/sale{} shape)
+  const raw = useMemo(() => {
     if (!data || data.error) return { areas: [], listings: [], kpis: {} }
     if (isCommercial && data.commercial) {
       return {
-        areas: (data.commercial.areas || []).map(toRentShape),
+        areas: data.commercial.areas || [],
         listings: data.commercial.listings || [],
         kpis: data.commercial.kpis || {},
       }
     }
     return { areas: data.areas || [], listings: data.listings || [], kpis: data.kpis || {} }
   }, [data, isCommercial])
+
+  // a size typed in the filter bar rebuilds every area from listings of a similar size
+  const sizeSqft = useMemo(() => {
+    const n = parseFloat(String(size).replace(/[^0-9.]/g, ''))
+    return n > 0 ? n : 0
+  }, [size])
+
+  const sized = useMemo(() => {
+    if (!sizeSqft || !area || !raw.areas.length) return null
+    return buildComparables({
+      areas: raw.areas, listings: raw.listings, isCommercial, area, type, size: sizeSqft, tolIdx,
+    })
+  }, [raw, isCommercial, area, type, sizeSqft, tolIdx])
+
+  const areasAll = useMemo(
+    () => (isCommercial ? raw.areas.map(toRentShape) : raw.areas), [raw.areas, isCommercial])
+  const areas = useMemo(
+    () => (!sized ? areasAll : (isCommercial ? sized.areas.map(toRentShape) : sized.areas)),
+    [sized, areasAll, isCommercial])
+  const listings = sized ? sized.listings : raw.listings
 
   // commercial rent is already annual → effective yield 1; land uses the 6.5% mid-point.
   const yld = isCommercial ? 1 : 0.065
@@ -70,8 +94,13 @@ export function StoreProvider({ children }) {
     <Ctx.Provider value={{
       data, lang, setLang,
       category, setCategory: switchCategory, isCommercial, hasCommercial,
-      areas: view.areas, listings: view.listings, kpis: view.kpis,
+      // size aware view (what the filtered pages read)
+      areas, listings, kpis: raw.kpis,
+      // full market, ignoring the size box (Insights, Studio, assistant, global search)
+      areasAll, listingsAll: raw.listings,
       area, setArea, type, setType, search, setSearch, yld,
+      size, setSize, sizeSqft, sizeActive: !!sized, sizeBand: sized ? sized.band : null,
+      tolIdx, setTolIdx, tols: TOLS,
     }}>
       {children}
     </Ctx.Provider>

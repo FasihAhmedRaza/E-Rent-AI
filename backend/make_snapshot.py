@@ -56,6 +56,29 @@ LAND_SUBTYPES = set(TYPE_MAP)
 # rent period -> annual multiplier (so all commercial rent is comparable annually)
 ANNUAL = {"year": 1, "month": 12, "week": 52, "day": 365, "total": 1}
 
+# Sanity bands for AED/sqft. Outside these the price and the size are not describing
+# the same thing, so the row is a portal data error rather than a cheap or pricey deal:
+#   - labour camps advertise a PER ROOM price against the whole building's size
+#     (3,100 AED on 235,000 sqft = 0.01 AED/sqft/yr)
+#   - co-working ads price a single desk, not the floor
+#   - some ads carry a broken size ("90,000 AED for 1 sqft")
+#   - a whole master development listed as one plot (4.5M AED on 13.4M sqft)
+#   - a sale price filed under rent (24M AED/yr for a 4,030 sqft warehouse)
+# Genuine extremes stay: an 80M AED plot at 455 AED/sqft is a real 176,000 sqft mall
+# plot and is kept. Widen the bands here if a real listing is ever wrongly dropped.
+PPSF_BANDS = {
+    ("land", "sale"): (20, 3000),
+    ("land", "rent"): (1, 400),
+    ("commercial_unit", "rent"): (5, 400),
+    ("commercial_unit", "sale"): (50, 5000),
+}
+
+
+def ppsf_sane(category: str, listing_type: str, ppsf) -> bool:
+    """False when price/sqft says the ad's price and size do not match."""
+    lo, hi = PPSF_BANDS.get((category, listing_type or "sale"), (0, float("inf")))
+    return ppsf is not None and lo <= ppsf <= hi
+
 # commercial unit subtypes we surface (order = UI order); anything else -> other_commercial
 UNIT_SUBTYPES = ["office", "shop", "warehouse", "showroom", "commercial_building",
                  "commercial_villa", "commercial_floor", "labour_camp", "factory",
@@ -124,7 +147,8 @@ def build_land(rows, coords):
         "src": r.get("source"), "lt": r.get("listing_type"), "url": r.get("source_url"), "title": r.get("title"),
     } for i, r in enumerate(rows)]
 
-    sale = [l for l in listings if l["lt"] == "sale" and l["area"] and l["value"] and l["ppsf"]]
+    sale = [l for l in listings if l["lt"] == "sale" and l["area"] and l["value"]
+            and ppsf_sane("land", "sale", l["ppsf"])]
     by_area = defaultdict(list)
     for l in sale:
         by_area[l["area"]].append(l)
@@ -163,6 +187,11 @@ def build_land(rows, coords):
                       "sources": {s: med([x["ppsf"] for x in ls if x["src"] == s]) for s in SOURCES}})
     areas.sort(key=lambda a: -a["n"])
 
+    # drop the broken rows from the published table too, so the site and the figures agree
+    dropped = len(listings)
+    listings = [l for l in listings if ppsf_sane("land", l["lt"], l["ppsf"]) or not l["ppsf"]]
+    dropped -= len(listings)
+
     allppsf = sorted(x["ppsf"] for x in sale)
     kpis = {
         "total_listings": len(listings), "sale": len(sale),
@@ -171,6 +200,7 @@ def build_land(rows, coords):
         "median_ppsf": med(allppsf), "p10": allppsf[len(allppsf)//10] if allppsf else None,
         "p90": allppsf[9*len(allppsf)//10] if allppsf else None,
         "by_source": {s: sum(1 for l in listings if l["src"] == s) for s in SOURCES},
+        "dropped_bad_ppsf": dropped,
     }
     return listings, areas, kpis
 
@@ -181,7 +211,7 @@ def _unit_bucket(subtype):
 
 def build_commercial(rows, coords):
     # normalise each commercial row: annualise rent, compute a consistent ppsf
-    items = []
+    items, dropped = [], 0
     for i, r in enumerate(rows):
         area, price, size = r.get("area_key"), r.get("price"), r.get("size_sqft")
         lt = r.get("listing_type")
@@ -195,6 +225,9 @@ def build_commercial(rows, coords):
         else:  # sale
             value = price
             ppsf = r.get("price_per_sqft") or (round(price / size, 2) if size else None)
+        if not ppsf_sane("commercial_unit", lt, ppsf):
+            dropped += 1
+            continue
         items.append({"id": i, "area": area, "subtype": sub, "type": sub, "size": size,
                       "value": value, "ppsf": ppsf, "src": r.get("source"), "lt": lt,
                       "url": r.get("source_url"), "title": r.get("title")})
@@ -245,6 +278,7 @@ def build_commercial(rows, coords):
         "by_source": {s: sum(1 for x in items if x["src"] == s) for s in SOURCES},
         "by_type": {st: sum(1 for x in items if x["subtype"] == st) for st in UNIT_SUBTYPES
                     if sum(1 for x in items if x["subtype"] == st)},
+        "dropped_bad_ppsf": dropped,
     }
     return items, areas, kpis
 
@@ -266,6 +300,8 @@ def main():
         "commercial": {"kpis": c_kpis, "areas": c_areas, "listings": c_list},
     }
     json.dump(out, open(os.path.join(PUB, "landData.json"), "w", encoding="utf-8"), ensure_ascii=False)
+    print(f"dropped as bad price/size: LAND {l_kpis['dropped_bad_ppsf']}, "
+          f"COMMERCIAL {c_kpis['dropped_bad_ppsf']}")
     print(f"snapshot: LAND {len(l_list)} listings / {len(l_areas)} areas (med ppsf {l_kpis['median_ppsf']}); "
           f"COMMERCIAL {len(c_list)} listings / {len(c_areas)} areas "
           f"(rent {c_kpis['rent_listings']}, sale {c_kpis['sale_listings']}, med rent ppsf {c_kpis['median_rent_ppsf']})")

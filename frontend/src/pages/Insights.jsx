@@ -24,7 +24,7 @@ const UpArrow = () => (
 )
 
 export default function Insights() {
-  const { data, areas: allAreas, listings, kpis, lang, yld, area, setArea, isCommercial } = useStore()
+  const { data, areasAll: allAreas, listingsAll: listings, kpis, lang, yld, area, setArea, isCommercial } = useStore()
   const t = T[lang]
   // Insights has no area picker of its own, so only ever chart areas that have real data
   const areas = useMemo(() => allAreas.filter(areaHasData), [allAreas])

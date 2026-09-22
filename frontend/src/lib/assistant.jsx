@@ -26,7 +26,7 @@ const Ctx = createContext(null)
 export const useAssistant = () => useContext(Ctx)
 
 export function AssistantProvider({ children }) {
-  const { data, areas, listings, kpis, lang, yld, isCommercial, setArea, setType } = useStore()
+  const { data, areasAll: areas, listingsAll: listings, kpis, lang, yld, isCommercial, setArea, setType } = useStore()
   const t = T[lang]
   const nav = useNavigate()
   const loc = useLocation()
