@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../lib/auth'
+import { authLinkError } from '../lib/supabase'
 import PasswordField from '../components/PasswordField'
 import Mark from '../components/Mark'
 const Check = () => (
@@ -7,11 +8,11 @@ const Check = () => (
 )
 
 export default function Login() {
-  const { signIn, signUp, resetPassword } = useAuth()
-  const [mode, setMode] = useState('signin') // signin | signup | forgot
+  const { signIn, resetPassword } = useAuth()
+  const [mode, setMode] = useState('signin') // signin | forgot  (no sign-up: an admin adds accounts)
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
-  const [err, setErr] = useState('')
+  const [err, setErr] = useState(authLinkError ? 'This email link has expired or was already used. If you were invited, ask your administrator to send a new invite.' : '')
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const go = (m) => { setMode(m); setErr(''); setMsg(''); setPw('') }
@@ -24,18 +25,15 @@ export default function Login() {
         if (error) setErr(error.message)
         else setMsg('If that email has an account, a password reset link is on its way. Check your inbox.')
       } else {
-        const fn = mode === 'signin' ? signIn : signUp
-        const { data, error } = await fn(email.trim(), pw)
+        const { error } = await signIn(email.trim(), pw)
         if (error) setErr(error.message)
-        else if (mode === 'signup' && !data.session) { setMsg('Account created. Check your email to confirm, then sign in.'); setMode('signin') }
       }
     } finally { setBusy(false) }
   }
 
-  const title = mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Reset password'
-  const cta = busy ? '…' : (mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link')
+  const title = mode === 'signin' ? 'Sign in' : 'Reset password'
+  const cta = busy ? '…' : (mode === 'signin' ? 'Sign in' : 'Send reset link')
   const sub = mode === 'forgot' ? 'Enter your email and we will send a reset link.'
-    : mode === 'signup' ? 'Create your internal access account.'
     : 'Internal access for the Land Management Department.'
 
   return (
@@ -75,8 +73,7 @@ export default function Login() {
                 <label className="auth-l" style={{ margin: 0 }}>Password</label>
                 {mode === 'signin' && <button type="button" className="auth-mini" onClick={() => go('forgot')}>Forgot password?</button>}
               </div>
-              <PasswordField value={pw} onChange={(e) => setPw(e.target.value)}
-                             autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} />
+              <PasswordField value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" />
             </>
           )}
 
@@ -88,8 +85,7 @@ export default function Login() {
           </button>
 
           <div className="auth-switch">
-            {mode === 'signin' && <>No account? <button type="button" onClick={() => go('signup')}>Create one</button></>}
-            {mode === 'signup' && <>Have an account? <button type="button" onClick={() => go('signin')}>Sign in</button></>}
+            {mode === 'signin' && <>No account? Ask your administrator to add you.</>}
             {mode === 'forgot' && <>Remembered it? <button type="button" onClick={() => go('signin')}>Back to sign in</button></>}
           </div>
 

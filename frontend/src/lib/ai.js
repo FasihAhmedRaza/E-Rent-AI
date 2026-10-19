@@ -1,9 +1,11 @@
-// Calls our serverless function (/api/ask) which holds the Gemini key server-side.
+import { authHeaders } from './supabase'
+
+// Calls our serverless function (/api/ask) which holds the Gemini key server-side (signed-in users only).
 // Throws if the AI isn't available (no key / offline) so the caller can fall back.
 export async function askGemini({ question, context, lang, history }) {
   const r = await fetch('/api/ask', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: JSON.stringify({ question, context, lang, history }),
   })
   if (!r.ok) throw new Error('ai-unavailable')

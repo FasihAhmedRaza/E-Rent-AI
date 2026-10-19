@@ -44,13 +44,15 @@ mall plot. If a real listing is ever dropped, widen the band in that one table.
 
 1. **GitHub repo** — the code. Transfer: repo Settings → Danger Zone → Transfer ownership.
 2. **Vercel project** — the live site. Transfer: Project Settings → Transfer. After
-   transfer, set the env var `GEMINI_API_KEY` (new owner's own key from
-   https://aistudio.google.com/apikey) and redeploy.
+   transfer, set the env vars `GEMINI_API_KEY` (new owner's own key from
+   https://aistudio.google.com/apikey), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+   (the `sb_secret_` key) and `APP_URL` (the live site address), then redeploy.
 3. **Supabase project** — database + user logins. Invite the new owner
    (Organization → Members) then remove old members. **Rotate the keys afterwards**
    (Settings → API → roll the `sb_secret_` key) and update:
-   - the `.env` file on the scrape PC, and
-   - the GitHub Action secrets (see section 6).
+   - the `.env` file on the scrape PC,
+   - the GitHub Action secrets (see section 6), and
+   - `SUPABASE_SERVICE_ROLE_KEY` in Vercel (then redeploy), or the Team page and AI assistant stop working.
 4. **Gemini key** — never reuse the old personal key; create a fresh one.
 
 ## 3. Secret files (NOT in GitHub — hand over separately)
@@ -61,6 +63,20 @@ mall plot. If a real listing is ever dropped, widen the band in that one table.
 
 Share these via a password manager or in person. Whoever holds `SUPABASE_KEY` can
 write to the database.
+
+## 3a. User accounts (invite-only)
+
+Nobody can sign up on their own (public sign-up is off in Supabase → Authentication →
+Sign In / Providers). An **admin** adds people on the **Team** page in the site, either:
+- **Send invite email**: the employee gets a link and chooses their own password, or
+- **Set password myself**: no email; the admin shares the login details (e.g. WhatsApp).
+
+To make someone an admin, run this in Supabase → SQL Editor, then have them sign out and in:
+```sql
+update auth.users set raw_app_meta_data = raw_app_meta_data || '{"role":"admin"}'::jsonb
+where email = 'person@example.com';
+```
+The invite email design is in `extras/password-reset-page/email-templates/invite-user.html`.
 
 ---
 

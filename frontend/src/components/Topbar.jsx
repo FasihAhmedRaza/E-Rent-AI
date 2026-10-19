@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth'
 import { T } from '../lib/i18n'
 import SearchBox from './SearchBox'
 
-const TITLE = { '/': 'navOverview', '/map': 'navMap', '/listings': 'navListings', '/trends': 'navTrends', '/insights': 'navInsights', '/assistant': 'navAsst', '/studio': 'navStudio' }
+const TITLE = { '/': 'navOverview', '/map': 'navMap', '/listings': 'navListings', '/trends': 'navTrends', '/insights': 'navInsights', '/assistant': 'navAsst', '/studio': 'navStudio', '/team': 'navTeam' }
 
 export default function Topbar() {
   const { lang, setLang } = useStore()

@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { useStore } from '../lib/store'
+import { useAuth } from '../lib/auth'
 import { T } from '../lib/i18n'
 
 const I = (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{p}</svg>
@@ -12,6 +13,7 @@ const ICONS = {
   insights: I(<><circle cx="7" cy="14" r="3" /><circle cx="16" cy="9" r="3.5" /><path d="M3 21h18" /></>),
   assistant: I(<><path d="M12 2a7 7 0 0 0-7 7v3a7 7 0 0 0 14 0V9a7 7 0 0 0-7-7z" /><path d="M9 13a3 3 0 0 0 6 0" /></>),
   studio: I(<><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9z" /></>),
+  team: I(<><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8" /><path d="M18 14.2a6.5 6.5 0 0 1 3.5 5.8" /></>),
 }
 const NAV = [
   ['/', 'overview', 'navOverview'], ['/map', 'map', 'navMap'], ['/listings', 'listings', 'navListings'],
@@ -21,7 +23,9 @@ const NAV = [
 
 export default function Sidebar() {
   const { lang } = useStore()
+  const { isAdmin } = useAuth()
   const t = T[lang]
+  const nav = isAdmin ? [...NAV, ['/team', 'team', 'navTeam']] : NAV
   return (
     <aside className="sidebar">
       <div className="s-brand">
@@ -29,7 +33,7 @@ export default function Sidebar() {
       </div>
       <nav className="nav">
         <span className="nav-label">{t.navLabel}</span>
-        {NAV.map(([to, key, label]) => (
+        {nav.map(([to, key, label]) => (
           <NavLink key={to} to={to} end={to === '/'} className="nav-item">
             {ICONS[key]}<span>{t[label]}</span>
           </NavLink>

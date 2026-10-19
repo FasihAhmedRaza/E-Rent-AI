@@ -269,6 +269,10 @@ tbody tr:last-child td{border-bottom:none}
 .src.bayut{color:#0C7A52;background:#E5F5EE}.src.dub{color:#A92A24;background:#FBE9E8}
 .src.pf{color:#5A3FA0;background:#EDE8FA}
 .src i{width:6px;height:6px;border-radius:50%}.src.bayut i{background:#1F9E6E}.src.dub i{background:#D43B33}.src.pf i{background:#7B5FD0}
+/* team (admin) */
+.team-tbl tbody tr{cursor:default}
+.ubadge{display:inline-block;font-size:.73rem;font-weight:700;padding:4px 10px;border-radius:7px;white-space:nowrap}
+.ubadge.ok{color:#0C7A52;background:#E5F5EE}.ubadge.wait{color:#8A6514;background:#FBF3E0}.ubadge.admin{color:#5A3FA0;background:#EDE8FA}
 .mp-arra{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;margin-bottom:4px;border-bottom:1px dashed var(--line);font-size:.78rem}
 .mp-arra span{color:var(--muted);font-weight:600}.mp-arra b{font-family:"Tajawal";color:var(--gold2)}
 .empty{padding:40px;text-align:center;color:var(--faint);font-size:.9rem}

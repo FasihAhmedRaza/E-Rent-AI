@@ -14,6 +14,7 @@ import Assistant from './pages/Assistant'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import Profile from './pages/Profile'
+import Team from './pages/Team'
 import { AuthProvider, useAuth } from './lib/auth'
 import { AssistantProvider } from './lib/assistant'
 import ChatWidget from './components/ChatWidget'
@@ -47,6 +48,7 @@ function Shell() {
                 <Route path="/assistant" element={<Assistant />} />
                 <Route path="/studio" element={<Studio />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/team" element={<Team />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </>
@@ -59,12 +61,13 @@ function Shell() {
 }
 
 function Gate() {
-  const { session, loading, recovery } = useAuth()
+  const { session, loading, recovery, invited } = useAuth()
   if (loading) return (
     <div className="auth-wrap"><div className="auth-aurora" />
       <div style={{ position: 'relative', zIndex: 1 }}><Loader dark label="Loading…" /></div></div>
   )
   if (recovery) return <ResetPassword />
+  if (invited && session) return <ResetPassword invite />
   if (!session) return <Login />
   return <StoreProvider><AssistantProvider><Shell /></AssistantProvider></StoreProvider>
 }

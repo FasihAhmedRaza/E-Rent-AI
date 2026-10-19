@@ -25,7 +25,7 @@ export const T = {
   en: {
     dir: 'ltr', brand: 'Intelligent Valuation AI', brandSub: 'Ajman · Land Intelligence', navLabel: 'Sections',
     navOverview: 'Overview', navMap: 'Map', navListings: 'Listings', navTrends: 'Trends',
-    navInsights: 'Insights', navAsst: 'AI Assistant', navStudio: 'AI Studio', internal: 'Internal · Live data',
+    navInsights: 'Insights', navAsst: 'AI Assistant', navStudio: 'AI Studio', navTeam: 'Team', internal: 'Internal · Live data',
     userName: 'Ahmed Al Nuaimi', userRole: 'Land Management Dept.', avatar: 'AA', searchPh: 'Search listings…',
     areaLbl: 'Area', typeLbl: 'Land type', allTypes: 'All types',
     sizeLbl: 'Plot size (sqft)', sizeLblC: 'Unit size (sqft)', sizePh: 'Any size',
@@ -89,7 +89,7 @@ export const T = {
   ar: {
     dir: 'rtl', brand: 'Intelligent Valuation AI', brandSub: 'عجمان · ذكاء الأراضي', navLabel: 'الأقسام',
     navOverview: 'نظرة عامة', navMap: 'الخريطة', navListings: 'العروض', navTrends: 'المؤشرات',
-    navInsights: 'تحليلات', navAsst: 'المساعد', navStudio: 'أدوات ذكية', internal: 'داخلي · بيانات مباشرة',
+    navInsights: 'تحليلات', navAsst: 'المساعد', navStudio: 'أدوات ذكية', navTeam: 'الفريق', internal: 'داخلي · بيانات مباشرة',
     userName: 'أحمد النعيمي', userRole: 'قسم إدارة الأراضي', avatar: 'أ ن', searchPh: 'ابحث…',
     areaLbl: 'المنطقة', typeLbl: 'نوع الأرض', allTypes: 'كل الأنواع',
     sizeLbl: 'مساحة القطعة (قدم)', sizeLblC: 'مساحة الوحدة (قدم)', sizePh: 'أي مساحة',
